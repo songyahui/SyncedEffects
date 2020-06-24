@@ -118,3 +118,20 @@ let rec string_of_prog (p : prog) : string =
   | Trap (name, prog) -> "(trap " ^ name ^ " in " ^ string_of_prog prog ^" )"
   | Exit name -> "(exit " ^ name ^" )"
   ;;
+
+let string_of_ss (ss:ss) :string =
+  let temp = List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> "!" ^name)) "" ss
+  in "[" ^ temp ^ "]" 
+  ;;
+
+
+let rec string_of_es (es:es) :string = 
+  match es with 
+    Bot -> "_|_"  
+  | Emp -> "emp"
+  | Instance ss  -> string_of_ss ss
+  | Or (es1, es2) ->  string_of_es es1 ^ " \\/ " ^ string_of_es es2
+  | Con (es1, es2) ->  string_of_es es1 ^ " ; " ^ string_of_es es2
+  | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*"
+
+  ;;

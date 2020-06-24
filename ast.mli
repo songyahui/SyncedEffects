@@ -1,5 +1,7 @@
 
-type signal = string
+
+type state = One | Zero
+type signal = (string * state)
 type var = string
 type name = string
 
@@ -12,7 +14,6 @@ type es = Bot
         | Or of es * es 
         | Con of es * es
         | Kleene of es
-        | Time of es * var (*[A]^n*)
 
 type terms = Var of var   
            | Number of int 

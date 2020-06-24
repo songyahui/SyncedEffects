@@ -87,9 +87,10 @@ rule token = parse
 | "==" {EQEQ}
 | ">=" {GTEQ}
 | "<=" {LTEQ}
+| eof { EOF }
 *)
 | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
-| eof { EOF }
+
 
 (* part 5 
 and read_string buf =
