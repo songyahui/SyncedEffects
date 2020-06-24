@@ -33,7 +33,7 @@ prog:
 | NOTHING { Nothing }
 | PAUSE   { Pause } 
 | LPAR SEQ p1 = prog p2 = prog RPAR { Seq (p1, p2)}
-| LPAR PAR p1 = prog p2 = prog RPAR { Seq (p1, p2)}
+| LPAR PAR p1 = prog p2 = prog RPAR { Par (p1, p2)}
 | LPAR LOOP p = prog  RPAR { Loop p}
 | LPAR SIGNAL s = VAR p = prog RPAR { Declear (s, p)}
 | LPAR EMIT s = VAR RPAR {Emit s}

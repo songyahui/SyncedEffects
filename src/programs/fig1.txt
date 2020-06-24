@@ -1,5 +1,0 @@
- (signal SL (seq (emit SL)
-(present SL
- (emit S01)
-  (emit S02))))
- 

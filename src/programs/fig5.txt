@@ -1,0 +1,8 @@
+(signal SL1
+(signal SL2
+  (par (present SL1 (emit SL2) nothing)
+  (
+present SL2 (emit SL1) nothing
+  ))
+)
+)

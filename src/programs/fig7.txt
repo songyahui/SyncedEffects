@@ -1,0 +1,12 @@
+(signal SL1 (signal SL2
+(signal SL3
+(par (present SL1
+(present SL2 (emit SO1)
+(emit SL3)) (present SL2
+(emit SO2) (emit SL3)))
+
+(seq
+(emit SL2)
+(seq 
+(present SL3 pause nothing)
+(emit SL1) ))))))

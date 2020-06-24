@@ -109,12 +109,12 @@ let rec string_of_prog (p : prog) : string =
   match p with
     Nothing -> "nothing"
   | Pause -> "pause"
-  | Seq (p1, p2) ->  string_of_prog p1 ^ " ; " ^ string_of_prog p2
-  | Par (p1, p2) ->  string_of_prog p1 ^ " || " ^ string_of_prog p2
-  | Loop pIn -> "loop " ^ string_of_prog pIn ^ "end"
-  | Declear (s, prog) -> "signal " ^ s ^ " in " ^ string_of_prog prog ^" end"
-  | Emit s -> "emit " ^ s
-  | Present (s, p1, p2) -> "present " ^ s ^ " then " ^ string_of_prog p1 ^" else " ^ string_of_prog p2
-  | Trap (name, prog) -> "trap " ^ name ^ " in " ^ string_of_prog prog
-  | Exit name -> "exit " ^ name
+  | Seq (p1, p2) ->  "(seq " ^ string_of_prog p1 ^ " " ^ string_of_prog p2 ^" )"
+  | Par (p1, p2) ->  "(par " ^ string_of_prog p1 ^ " " ^ string_of_prog p2 ^" )"
+  | Loop pIn -> "(loop " ^ string_of_prog pIn ^ ")"
+  | Declear (s, prog) -> "(signal " ^ s ^ " " ^ string_of_prog prog ^" )"
+  | Emit s -> "(emit " ^ s ^ ")"
+  | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
+  | Trap (name, prog) -> "(trap " ^ name ^ " in " ^ string_of_prog prog ^" )"
+  | Exit name -> "(exit " ^ name ^" )"
   ;;
