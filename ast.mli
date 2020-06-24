@@ -1,6 +1,7 @@
 
 type signal = string
 type var = string
+type name = string
 
 (*signal set*)
 type ss = signal list
@@ -30,14 +31,15 @@ type pure = TRUE
           | Neg of pure
 
 
-type effect = (pure * es) list  (* n +m > 0 /\ m>3 /\  > 0  /\ [A]^n*)
+type effect = (pure * es) list  
 
-
-(*
-let name (lhs:effect) (rhs:effect) .(env)... : bool = 
-*)
-
-        (*(TRUE, [A])*)
-
-
-
+type prog = Nothing 
+          | Pause 
+          | Seq of prog * prog 
+          | Par of prog * prog
+          | Loop of prog
+          | Declear of var * prog
+          | Emit of var
+          | Present of var * prog * prog
+          | Trap of name * prog
+          | Exit of name
