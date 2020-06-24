@@ -125,8 +125,70 @@ let rec forward (prog:prog) (evn: string list) ((history, now):(es* signal list)
   | Exit name -> Con (history, Instance (List.append now [("Exit_"^name, One )]))
   ;;
 
+let compareState s1 s2 : bool =
+  match (s1, s2) with 
+    (One, One) -> true 
+  | (Zero, Zero) -> true 
+  | _ -> false 
+  ;;
+
+let rec oneOf (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
+;;
+
+let rec deleteRedundent ss : ss = 
+  match ss with 
+    [] -> ss 
+  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
+
+  ;;
+
+let rec oneOfFalse (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
+;;
+
+let rec checkHasFalse ss : bool = 
+  match ss with 
+  [] -> false 
+| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
+;;
+
+
+  
+let rec normalES es: es =
+  match es with 
+    Con (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (match (norES1, norES2) with 
+        (Emp, _) -> norES2 
+      | _ -> Con (norES1, norES2)
+      )
+  | Or (es1, es2) -> 
+    let norES1 = normalES es1 in 
+    let norES2 = normalES es2 in 
+    (match (norES1, norES2) with 
+      (Bot, Bot) -> Bot 
+    | (Bot, _) -> norES2
+    | (_, Bot) -> norES1
+    | _ -> Or (norES1, norES2)
+    )
+  | Instance ss -> 
+    let ss1 = deleteRedundent ss in 
+    if checkHasFalse ss1 then  Bot else (Instance ss1)
+  | Kleene esIn -> Kleene (normalES esIn)
+  | _ -> es 
+  ;;
+
+
+
+
 let fowward_inter prog : es = 
-  forward prog [] (Emp, []) ;;
+  normalES (forward prog [] (Emp, [])) ;;
 
 
 let () =

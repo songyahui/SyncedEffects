@@ -1,6 +1,6 @@
 
 
-type state = One | Zero
+type state = One | Zero 
 type signal = (string * state)
 type var = string
 type name = string
