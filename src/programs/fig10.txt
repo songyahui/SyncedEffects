@@ -1,7 +1,0 @@
-(signal S1
-(present S1 (emit S1) (emit S1)))
-(signal S1
-(seq (present S1
-nothing
-nothing
-(emit S1) ))

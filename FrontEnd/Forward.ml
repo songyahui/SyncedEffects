@@ -38,28 +38,7 @@ let rec append_es_es (es1) (es2) :es =
 
   ;;
 
-let rec zip_es_es (es_1) (es_2) :es = 
 
-  let rec helper acc es1 es2: es = 
-    match es1 with 
-      Bot -> Con (acc,  es2)
-    | Emp -> Con (acc, es2)
-    | Instance ss1 -> 
-        (match es2 with 
-          Bot -> Con (acc, es1)
-        | Emp -> Con (acc, es1)
-        | Instance ss2 -> Con (acc, Instance (List.append ss1 ss2))
-        | Or (es21, es22) ->Or (helper acc es1 es21, helper acc es1 es22)
-        | Con (es21, es22) -> Con  (helper acc es1 es21, es22)
-        | Kleene es2In -> Or (Con (acc, es1), helper acc es1 (Con (es2In, es2)))
-        )
-    | Or (es11, es12) -> Or (helper acc es11 es2, helper acc es12 es2)
-    | Con(es11, es12) -> Con  (helper acc es11 es2, es12)
-    | Kleene es1In -> Or (Con (acc, es2), helper acc es2 (Con (es1In, es1)) )
-
-
-  in helper Emp es_1 es_2
-  ;;
 
 let rec checkExit name ss : bool = 
   match ss with 
@@ -92,38 +71,7 @@ let rec splitESfromLast es: (es * ss) list =
   | _ -> raise (Foo "splitESfromLast _")
   ;;
 
-let rec forward (prog:prog) (evn: string list) ((history, now):(es* signal list)) : es =
-  match prog with 
-    Nothing -> append_history_now history (List.append now (make_nothing evn))
-  | Pause -> (append_history_now (append_history_now history now) [])
-  | Seq (p1, p2) ->  
-    let temp1 = forward p1 evn (Emp, now) in 
-    let temp2 = forward p2 evn (Emp, now) in 
-    Con (history,  append_es_es temp1 temp2)
-  | Par (p1, p2) ->  
-    let temp1 = forward p1 evn (Emp, now) in 
-    let temp2 = forward p2 evn (Emp, now) in 
-    Con (history, zip_es_es temp1 temp2)
-  | Loop pIn -> 
-    let temp = forward pIn evn (Emp, now) in 
-    Con (history, Kleene temp)
-  | Declear (s, progIn ) -> forward progIn (List.append evn [s]) (history, now)
-  | Emit s -> append_history_now history (List.append now [(s, One)])
-  | Present (s, p1, p2) -> 
-    let temp1 = forward p1 evn (Emp, List.append now [(s, One)]) in 
-    let temp2 = forward p2 evn (Emp, List.append now [(s, Zero)]) in 
-    Or (temp1, temp2)
-  | Trap (name, pIn) -> 
-    let temp = forward pIn evn (Emp, now) in 
-    let listOfFL = splitESfromLast temp in 
-    let allRes = List.map (fun (f, l) -> 
-      if checkExit ("Exit_"^name) l then f else Kleene f
-    ) listOfFL
-    in 
-    disjunES allRes
-    
-  | Exit name -> Con (history, Instance (List.append now [("Exit_"^name, One )]))
-  ;;
+
 
 let compareState s1 s2 : bool =
   match (s1, s2) with 
@@ -184,8 +132,61 @@ let rec normalES es: es =
   | _ -> es 
   ;;
 
+let rec zip_es_es (es_1) (es_2) :es = 
+
+  let rec helper acc es1 es2: es = 
+    match es1 with 
+      Bot -> Con (acc,  es2)
+    | Emp -> Con (acc, es2)
+    | Instance ss1 -> 
+        (match es2 with 
+          Bot -> Con (acc, es1)
+        | Emp -> Con (acc, es1)
+        | Instance ss2 -> Con (acc, Instance (List.append ss1 ss2))
+        | Or (es21, es22) -> Or (helper acc es1 es21, helper acc es1 es22)
+        | Con (es21, es22) -> Con  (helper acc es1 es21, es22)
+        | Kleene es2In -> Or (Con (acc, es1), helper acc es1 (Con (es2In, es2)))
+        )
+    | Or (es11, es12) -> Or (helper acc es11 es2, helper acc es12 es2)
+    | Con(es11, es12) -> Con  (helper acc es11 es2, es12)
+    | Kleene es1In -> Or (Con (acc, es2), helper acc es2 (Con (es1In, es1)) )
 
 
+  in helper Emp (normalES es_1) (normalES es_2)
+  ;;
+
+let rec forward (prog:prog) (evn: string list) ((history, now):(es* signal list)) : es =
+  match prog with 
+    Nothing -> append_history_now history (List.append now (make_nothing evn))
+  | Pause -> Con ((append_history_now history now),  Instance [])
+  | Seq (p1, p2) ->  
+    let temp1 = forward p1 evn (Emp, now) in 
+    let temp2 = forward p2 evn (Emp, now) in 
+    Con (history,  append_es_es temp1 temp2)
+  | Par (p1, p2) ->  
+    let temp1 = forward p1 evn (Emp, now) in 
+    let temp2 = forward p2 evn (Emp, now) in 
+    Con (history, zip_es_es temp1 temp2)
+  | Loop pIn -> 
+    let temp = forward pIn evn (Emp, now) in 
+    Con (history, Kleene temp)
+  | Declear (s, progIn ) -> forward progIn (List.append evn [s]) (history, now)
+  | Emit s -> append_history_now history (List.append now [(s, One)])
+  | Present (s, p1, p2) -> 
+    let temp1 = forward p1 evn (Emp, List.append now [(s, One)]) in 
+    let temp2 = forward p2 evn (Emp, List.append now [(s, Zero)]) in 
+    Or (temp1, temp2)
+  | Trap (name, pIn) -> 
+    let temp = forward pIn evn (Emp, now) in 
+    let listOfFL = splitESfromLast temp in 
+    let allRes = List.map (fun (f, l) -> 
+      if checkExit ("Exit_"^name) l then f else Kleene f
+    ) listOfFL
+    in 
+    disjunES allRes
+    
+  | Exit name -> Con (history, Instance (List.append now [("Exit_"^name, One )]))
+  ;;
 
 let fowward_inter prog : es = 
   normalES (forward prog [] (Emp, [])) ;;
