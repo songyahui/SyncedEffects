@@ -1,3 +1,5 @@
+(signal SO1
+(signal SO2
 (signal SL1 
 (signal SL2
 (signal SL3
@@ -15,4 +17,4 @@
 (present SL3 pause nothing)
 (emit SL1) ))
 
-))))
+))))))

@@ -52,7 +52,10 @@ let rec disjunES (esList) : es =
     match esL  with 
       [] -> acc
     | x ::xs  -> helper (Or (acc, x)) xs
-  in helper Emp esList
+  in 
+    match esList with 
+      [] -> Emp
+    | x::xs -> helper x xs
 
   ;;
 
@@ -157,30 +160,49 @@ let rec zip_es_es (es_1) (es_2) :es =
   in helper Emp (normalES es_1) (normalES es_2)
   ;;
 
-let rec forward (prog:prog) (evn: string list) ((history, now):(es* signal list)) : es =
+let rec setTrue (ss:ss) (name) : ss = 
+  match ss with 
+    [] -> raise  (Foo (name^" is not decleared"))
+  | (x, state)::xs -> 
+    if String.compare x name == 0 then List.append [(x, One)] xs else  List.append [(x, state)] (setTrue xs name)
+  ;;
+
+let rec forward (prog:prog) (evn: string list) ((history, now):(es* ss)) : es =
   match prog with 
     Nothing -> normalES (append_history_now history now)
     (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
-  | Pause -> normalES (Con ((append_history_now history now),  Instance []))
+  | Pause -> normalES (Con ((append_history_now history now),  Instance (make_nothing evn)))
   | Seq (p1, p2) ->  
+
     let temp1 =  normalES (forward p1 evn (Emp, now)) in 
-    let temp2 =  normalES (forward p2 evn (Emp, now)) in 
-    Con (history,  append_es_es temp1 temp2)
+
+    let listOfFL = splitESfromLast temp1 in 
+
+    let temp2 = List.map (fun (a) -> normalES (forward p2 evn a)) listOfFL in 
+
+    Con (history,  disjunES temp2)
   | Par (p1, p2) ->  
     let temp1 = normalES (forward p1 evn (Emp, now)) in 
     let temp2 = normalES (forward p2 evn (Emp, now)) in 
     Con (history, zip_es_es temp1 temp2)
   | Loop pIn -> 
-    let temp = forward pIn evn (Emp, now) in 
+    let temp = normalES (forward pIn evn (Emp, now)) in 
     Con (history, Kleene temp)
-  | Declear (s, progIn ) -> forward progIn (List.append evn [s]) (history, now)
-  | Emit s -> append_history_now history (List.append now [(s, One)])
+
+  | Declear (s, progIn ) -> normalES (forward progIn evn (history,  now))
+      (*(match progIn with 
+        Declear _ -> forward progIn (List.append evn [s]) (history, now)
+      | _ -> let evn' = List.append evn [s] in 
+      forward progIn evn' (history,  (make_nothing evn'))
+      )
+      *)
+  | Emit s -> append_history_now history (setTrue now s)
   | Present (s, p1, p2) -> 
-    let temp1 = normalES (forward p1 evn (Emp, List.append now [(s, One)])) in 
+    let temp1 = normalES (forward p1 evn (Emp, setTrue now s)) in 
     let temp2 = normalES (forward p2 evn (Emp, List.append now [(s, Zero)])) in 
     Or (temp1, temp2)
   | Trap (name, pIn) -> 
-    let temp = forward pIn evn (Emp, now) in 
+    let temp = normalES (forward pIn evn (Emp, now)) in 
     let listOfFL = splitESfromLast temp in 
     let allRes = List.map (fun (f, l) -> 
       if checkExit ("Exit_"^name) l then f else Kleene f
@@ -191,8 +213,16 @@ let rec forward (prog:prog) (evn: string list) ((history, now):(es* signal list)
   | Exit name -> Con (history, Instance (List.append now [("Exit_"^name, One )]))
   ;;
 
+let rec getAllTheSIgnals (prog) acc: string list = 
+  match prog with 
+    Declear (s, progIn ) -> getAllTheSIgnals progIn (List.append acc [s])
+  | _ -> acc 
+  ;;
+
 let fowward_inter prog : es = 
-  normalES (forward prog [] (Emp, [])) ;;
+  let evn = getAllTheSIgnals prog [] in 
+  let now = make_nothing evn in 
+  normalES (forward prog evn (Emp, now)) ;;
 
 
 let () =
@@ -205,7 +235,7 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
       let prog = Parser.prog Lexer.token (Lexing.from_string line) in
 
-      
+      (*print_string (string_of_prog prog^"\n");*)
       print_string (string_of_es (fowward_inter prog) ^"\n");
       
       flush stdout;                (* 现在写入默认设备 *)
