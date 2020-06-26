@@ -130,8 +130,8 @@ let rec string_of_es (es:es) :string =
     Bot -> "_|_"  
   | Emp -> "emp"
   | Instance ss  -> string_of_ss ss
-  | Or (es1, es2) ->  string_of_es es1 ^ " \\/ " ^ string_of_es es2
-  | Con (es1, es2) ->  string_of_es es1 ^ " ; " ^ string_of_es es2
+  | Or (es1, es2) ->  "(" ^ string_of_es es1 ^ " \\/ " ^ string_of_es es2 ^ ")"
+  | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*"
 
   ;;
