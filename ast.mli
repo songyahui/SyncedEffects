@@ -6,7 +6,8 @@ type var = string
 type name = string
 
 (*signal set*)
-type ss = signal list
+type ss = signal list * signal list 
+(*前面的是constrain， 后面的是signal*)
 
 type es = Bot 
         | Emp 

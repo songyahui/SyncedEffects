@@ -1,5 +1,5 @@
-(signal SL
+(signal SO2 (signal SO1  (signal SL
   (par (seq pause
           (emit SL)
       ) 
-      (present SL (emit SO1) (emit SO2))))
+      (present SL (emit SO1) (emit SO2))))))

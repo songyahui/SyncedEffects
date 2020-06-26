@@ -1,1 +1,1 @@
-(signal SL (present SL (emit S01) (emit S02) ) ) 
+(signal S02 (signal S01 (signal SL (present SL (emit S01) (emit S02) ) ) ))

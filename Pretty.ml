@@ -119,9 +119,14 @@ let rec string_of_prog (p : prog) : string =
   | Exit name -> "(exit " ^ name ^" )"
   ;;
 
-let string_of_ss (ss:ss) :string =
-  let temp = List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> "!" ^name)) "" ss
-  in "[" ^ temp ^ "]" 
+let string_of_sl (sl):string = 
+  List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> "!" ^name)) "" sl
+;;
+
+let string_of_ss ((cons, ss):ss) :string = 
+  let temp = "(" ^ string_of_sl cons ^ ")" in 
+  let temp1 = "[" ^ string_of_sl ss ^ "]" in 
+  temp ^ " & " ^temp1
   ;;
 
 
