@@ -1,0 +1,5 @@
+(signal SL
+  (par (emit A)
+ (seq pause
+          (emit SL)))
+)

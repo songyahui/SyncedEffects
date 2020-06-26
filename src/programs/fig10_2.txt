@@ -1,0 +1,5 @@
+(signal S1
+(seq (present S1
+nothing
+nothing)
+(emit S1) ))
