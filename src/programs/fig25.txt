@@ -1,0 +1,7 @@
+
+(signal Souter 
+(signal Sinner 
+(seq
+(present Souter nothing nothing)
+(present Sinner (emit Souter) nothing)
+ )))
