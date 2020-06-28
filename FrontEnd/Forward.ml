@@ -239,7 +239,11 @@ let rec forward origin (prog:prog) (evn: string list) ((history, now):(es*ss)) :
     let temp = normalES (forward origin pIn evn (Emp, now)) in 
     Con (history, Kleene temp)
 
-  | Declear (s, progIn ) -> normalES (forward origin progIn evn (history,  now))
+  | Declear (s, progIn ) -> 
+    (match now with 
+      (con, ss) ->
+    normalES (forward origin progIn (List.append evn [s]) (history,  (con, List.append ss [(s, Zero)])))
+    )
   | Emit s -> append_history_now history (setTrue now s)
   | Present (s, p1, p2) -> 
     
@@ -263,16 +267,18 @@ let rec forward origin (prog:prog) (evn: string list) ((history, now):(es*ss)) :
       (con, ss) -> Con (history, Instance (con, List.append ss [("Exit_"^name, One )]))
   ;;
 
+(*
 let rec getAllTheSIgnals (prog) acc: string list = 
   match prog with 
     Declear (s, progIn ) -> getAllTheSIgnals progIn (List.append acc [s])
   | _ -> acc 
   ;;
+  *)
 
 let fowward_inter prog : es = 
-  let evn = getAllTheSIgnals prog [] in 
-  let now = make_nothing evn in 
-  normalES (forward prog prog evn (Emp, ([], now))) ;;
+  (*let evn = getAllTheSIgnals prog [] in *)
+  (*let now = make_nothing evn in *)
+  normalES (forward prog prog [] (Emp, ([], []))) ;;
 
 let rec logical_check es :es = 
   match es with 
