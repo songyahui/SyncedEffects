@@ -108,7 +108,7 @@ let rec string_of_prog (p : prog) : string =
   | Emit s -> "(emit " ^ s ^ ")"
   | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
   | Trap (name, prog) -> "(trap " ^ name ^ " in " ^ string_of_prog prog ^" )"
-  | Exit name -> "(exit " ^ name ^" )"
+  | Exit (name, d) -> "(exit " ^ name ^"_"^ string_of_int d^ ")"
   ;;
 
 let string_of_sl (sl):string = 
@@ -130,4 +130,12 @@ let rec string_of_es (es:es) :string =
   | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*"
 
+  ;;
+
+let string_of_trace (trace :trace) :string = 
+  let (his, cur) = trace in  
+  string_of_es his ^  ", " ^ string_of_instance cur ;;
+
+let string_of_postcondition (post:postcondition):string = 
+  List.fold_left (fun acc a -> acc ^ "\n" ^ string_of_trace a) "" post
   ;;

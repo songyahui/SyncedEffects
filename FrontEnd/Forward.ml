@@ -62,18 +62,17 @@ let make_nothing (evn: string list) : mapping list =
   List.map (fun a -> (a, Zero) ) evn 
   ;;
 
-  (*
-let rec splitESfromLast es: (es * ss) list =
+  
+let rec splitESfromLast es: (es * instance) =
   match es with 
-    Instance ss -> [(Emp, ss)]
-  | Or (es1, es2) -> List.append (splitESfromLast es1) (splitESfromLast es2)
+    Instance ss -> (Emp, ss)
   | Con (es1, es2) -> 
-    let listOfFL = splitESfromLast es2 in 
-    List.fold_left (fun acc (f, l) -> List.append acc [(Con(es1, f), l)]) [] listOfFL
+    let (his, cu) = splitESfromLast es2 in 
+    (Con (es1, his), cu)
   | _ -> raise (Foo "splitESfromLast _")
   ;;
 
-*)
+
 
 let compareState s1 s2 : bool =
   match (s1, s2) with 
@@ -205,46 +204,60 @@ let rec can_fun (s:var) (prog:prog) :bool =
   ;;
 
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcondition =
-  let (evn, (history, maps)) = precondition in 
+  let (evn, (history, curr)) = precondition in 
   match prog with 
-  | _ -> [(history, maps)]
-  (*
-    Nothing -> normalES (append_history_now history now)
-    (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
-  | Pause -> normalES (Con ((append_history_now history now),  Instance ([], make_nothing evn)))
+
+    Nothing -> [(history, curr)]
+  | Emit s -> 
+    let newCurr = setTrue curr s in 
+    [(history, newCurr)]
+  | Pause -> 
+    let newHis = Con (history, Instance curr) in 
+    let newCurr = ([], make_nothing evn) in 
+    [(newHis, newCurr)]
+  | Present (s, p1, p2) -> 
+    let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
+    let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
+    List.append eff1 eff2
+(*    if can_fun s origin == false then temp2 else 
+    Or (temp1, temp2)
+*)
   | Seq (p1, p2) ->  
-    let temp1 =  normalES (forward origin p1 evn (Emp, now)) in 
-    (*print_string (string_of_es temp1^"\n");*)
-    let listOfFL = splitESfromLast temp1 in 
-    let temp2 = List.map (fun (a) -> normalES (forward origin p2 evn a)) listOfFL in 
-    (*print_string (string_of_es (disjunES temp2) ^"\n");*)
-
-    Con (history,  disjunES temp2)
+    let eff1 = forward (evn, (history, curr )) p1 toCheck in 
+    List.flatten (List.map (fun a -> 
+      let (newHis, newCurr) = a in 
+      forward (evn, (newHis, newCurr)) p2 toCheck
+    ) eff1)
   | Par (p1, p2) ->  
-    let temp1 = normalES (forward origin p1 evn (Emp, now)) in 
+    let eff1 = forward (evn, (history, curr )) p1 toCheck in 
     (*print_string (string_of_es temp1^"\n");*)
-    let temp2 =  (forward origin p2 evn (Emp, now)) in 
+    let eff2 = forward (evn, (history, curr )) p2 toCheck in 
     (*print_string (string_of_es temp2^"\n");*)
+    List.flatten (List.map (fun (his_a, cur_a) -> 
+      List.map (fun (his_b, cur_b) -> 
+        let temp = zip_es_es (Con(his_a,  Instance cur_a )) (Con (his_b, Instance cur_b ))
+        in splitESfromLast temp
+        ) eff2) eff1 )
 
-    Con (history, zip_es_es temp1 temp2)
+    (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
+  | Declear (s, progIn ) -> 
+    let (con, ss) = curr in 
+    forward ((List.append evn [s]), (history, (con, List.append ss [(s, Zero)]) )) progIn toCheck
+
+  | Exit (name, d)-> 
+    let (con, ss) = curr in 
+    forward (evn, (history, (List.append con [("Exit_"^name, One )] ,  ss ) )) Nothing toCheck
+
+
+
+   (*
+
   | Loop pIn -> 
-    let temp = normalES (forward origin pIn evn (Emp, now)) in 
+    let eff = forward (evn, (history, curr )) pIn toCheck in 
+    let eff = forward (evn, (history, curr )) pIn toCheck in 
+
     Con (history, Kleene temp)
 
-  | Declear (s, progIn ) -> 
-    (match now with 
-      (con, ss) ->
-    normalES (forward origin progIn (List.append evn [s]) (history,  (con, List.append ss [(s, Zero)])))
-    )
-  | Emit s -> append_history_now history (setTrue now s)
-  | Present (s, p1, p2) -> 
-    
-    let temp1 = normalES (forward origin p1 evn (Emp, add_Constain now (s, One))) in 
-    (*print_string (string_of_es temp1^"\n");*)
-    let temp2 = normalES (forward origin p2 evn (Emp, add_Constain now (s, Zero))) in 
-    (*print_string (string_of_es temp2^"\n");*)
-    if can_fun s origin == false then temp2 else 
-    Or (temp1, temp2)
   | Trap (name, pIn) -> 
     let temp = normalES (forward origin pIn evn (Emp, now)) in 
     let listOfFL = splitESfromLast temp in 
@@ -254,10 +267,9 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
     in 
     disjunES allRes
     
-  | Exit name -> 
-    match now with 
-      (con, ss) -> Con (history, Instance (con, List.append ss [("Exit_"^name, One )]))
+
       *)
+  | _ -> [(history, curr)]
   ;;
 
 (*
@@ -271,7 +283,7 @@ let rec getAllTheSIgnals (prog) acc: string list =
 let fowward_inter prog : postcondition = 
   (*let evn = getAllTheSIgnals prog [] in *)
   (*let now = make_nothing evn in *)
-  let precondition = ([], (Emp, ([]))) in 
+  let precondition = ([], (Emp, ([], []))) in 
   (forward precondition prog prog)
   
   ;;
@@ -307,12 +319,11 @@ let rec logical_check es :es =
 
 
 let analyse prog : string = 
-  (*let forward = fowward_inter prog in  
-  let logical_res = logical_check forward in 
-  let info = "\n================\nForward res = " ^ string_of_es  forward ^ "\n" ^string_of_es logical_res ^ "\n" in 
+  let forward = fowward_inter prog in  
+  (*let logical_res = logical_check forward in *)
+  let info = "\n================\nForward res = " ^ string_of_postcondition  forward  in 
    (info)
-   *)
-  "jkabsjdalkjslkad"
+
    ;;
 
 
