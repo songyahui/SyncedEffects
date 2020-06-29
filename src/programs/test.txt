@@ -1,5 +1,8 @@
-(signal SL
-  (par (emit A)
- (seq pause
-          (emit SL)))
+(signal O1
+(signal O2
+(par
+(present O1 (emit O1) nothing )
+(present O1 (present O2 nothing (emit O2) ) nothing 
 )
+)
+))
