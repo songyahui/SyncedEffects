@@ -6,7 +6,6 @@ open String
 open List
 open Ast
 open Printf
-open Askz3
 open Int32
 
 
@@ -29,13 +28,6 @@ let rec getAfreeVar (varList:string list):string  =
   findOne freeVar
 ;;
 
-let rec normalTerms (t:terms):terms  = 
-  match t with 
-    Minus (Minus(s, Number n1), Number n2) ->  Minus(s, Number (n1 + n2))
-  | Minus (Number n1, Number n2) ->  Number (n1- n2) 
-  | Plus (Number n1, Number n2) -> Number (n1 + n2)
-  | _ -> t 
-  ;;
 
 
 
@@ -123,9 +115,9 @@ let string_of_sl (sl):string =
   List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> "!" ^name)) "" sl
 ;;
 
-let string_of_ss ((cons, ss):ss) :string = 
+let string_of_instance ((cons, mapping):instance) :string = 
   let temp = "(" ^ string_of_sl cons ^ ")" in 
-  let temp1 = "[" ^ string_of_sl ss ^ "]" in 
+  let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
   temp ^ " & " ^temp1
   ;;
 
@@ -134,8 +126,7 @@ let rec string_of_es (es:es) :string =
   match es with 
     Bot -> "_|_"  
   | Emp -> "emp"
-  | Instance ss  -> string_of_ss ss
-  | Or (es1, es2) ->  "(" ^ string_of_es es1 ^ " \\/ " ^ string_of_es es2 ^ ")"
+  | Instance ins  -> string_of_instance ins
   | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*"
 

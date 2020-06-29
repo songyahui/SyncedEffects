@@ -8,18 +8,17 @@ open Pretty
 open Sys
 
 
-let rec append_history_now (history:es) ((cons, now) : ss) :es = 
+let rec append_history_now (history:es) ((cons, now) : instance) :es = 
   match history with 
     Bot -> Bot
   | Emp -> Instance (cons, now) 
   | Instance _  ->  Con(history, Instance (cons, now))
-  | Or (es1, es2) ->  Or (append_history_now es1 (cons, now), append_history_now es2 (cons, now))
   | Con (es1, es2) -> Con (es1, append_history_now es2 (cons, now))
   | Kleene esIn -> Con (history , Instance (cons, now))
 ;;
 
 
-let rec append_es_es (es1) (es2) :es = 
+let rec append_es_es (es1) (es2) : es = 
   match es1 with
     Bot -> Bot
   | Emp -> es2
@@ -29,12 +28,10 @@ let rec append_es_es (es1) (es2) :es =
         | Emp -> es1
         | Instance (con2, ss2) -> Instance (List.append con1 con2, List.append ss1 ss2)
         | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
-        | Or (es21, es22) -> Or (append_es_es es1 es21, append_es_es es1 es22)
-        | Kleene esIn2 -> Or (es1, Con (append_es_es es1 esIn2, es2))
+        | Kleene esIn2 -> Con (append_es_es es1 esIn2, es2)
         )
-  | Or (es11, es12) ->  Or (append_es_es es11 es2, append_es_es es12 es2)
   | Con (es11, es12) -> Con (es11, append_es_es es12 es2)
-  | Kleene esIn1 -> Or (es2, Con (es1 , append_es_es esIn1 es2))
+  | Kleene esIn1 -> Con (es1 , append_es_es esIn1 es2)
 
   ;;
 
@@ -47,6 +44,7 @@ let rec checkExit name (con, ss) : bool =
 
   ;;
 
+  (*
 let rec disjunES (esList) : es =
   let rec helper acc esL : es = 
     match esL  with 
@@ -58,12 +56,13 @@ let rec disjunES (esList) : es =
     | x::xs -> helper x xs
 
   ;;
+*)
 
-
-let make_nothing (evn: string list) : signal list = 
+let make_nothing (evn: string list) : mapping list = 
   List.map (fun a -> (a, Zero) ) evn 
   ;;
 
+  (*
 let rec splitESfromLast es: (es * ss) list =
   match es with 
     Instance ss -> [(Emp, ss)]
@@ -74,7 +73,7 @@ let rec splitESfromLast es: (es * ss) list =
   | _ -> raise (Foo "splitESfromLast _")
   ;;
 
-
+*)
 
 let compareState s1 s2 : bool =
   match (s1, s2) with 
@@ -89,7 +88,7 @@ let rec oneOf (var, state) ss : bool =
   | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
 ;;
 
-let rec deleteRedundent sl : signal list = 
+let rec deleteRedundent sl : mapping list = 
   match sl with 
     [] -> sl 
   | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
@@ -121,15 +120,7 @@ let rec normalES es: es =
       | (_ , Bot) -> Bot 
       | _ -> Con (norES1, norES2)
       )
-  | Or (es1, es2) -> 
-    let norES1 = normalES es1 in 
-    let norES2 = normalES es2 in 
-    (match (norES1, norES2) with 
-      (Bot, Bot) -> Bot 
-    | (Bot, _) -> norES2
-    | (_, Bot) -> norES1
-    | _ -> Or (norES1, norES2)
-    )
+
   | Instance (con, ss) -> 
     let con1 = deleteRedundent con in 
     let ss1 = deleteRedundent ss in 
@@ -138,9 +129,9 @@ let rec normalES es: es =
   | _ -> es 
   ;;
 
-let rec unionTwoList (sl1) (sl2) : signal list = 
+let rec unionTwoList (sl1) (sl2) : mapping list = 
   let app = deleteRedundent (List.append sl1 sl2) in 
-  let rec helper acc sl : signal list =  
+  let rec helper acc sl : mapping list =  
     match sl with
       [] -> acc 
     | (nm, sta)::xs -> if oneOfFalse (nm, sta) app then helper (List.append acc [(nm, One)]) xs else helper (List.append acc [(nm, sta)]) xs
@@ -171,20 +162,18 @@ let rec zip_es_es (es_1) (es_2) :es =
           )
 
 
-        | Or (es21, es22) -> Or (helper acc es1 es21, helper acc es1 es22)
         | Con (es21, es22) -> Con  (helper acc es1 es21, es22)
-        | Kleene es2In -> Or (Con (acc, es1), helper acc es1 (Con (es2In, es2)))
+        | Kleene es2In -> raise (Foo "zip_es_es in ");
         )
-    | Or (es11, es12) -> Or (helper acc es11 es2, helper acc es12 es2)
     | Con(es11, es12) -> Con  (helper acc es11 es2, es12)
-    | Kleene es1In -> Or (Con (acc, es2), helper acc es2 (Con (es1In, es1)) )
+    | Kleene es1In -> raise (Foo "zip_es_es out ");
 
 
   in helper Emp (normalES es_1) (normalES es_2)
   ;;
 
-let rec setTrue ((con, ss):ss) (name) : ss= 
-  let rec helper (inn:signal list ):signal list  = 
+let rec setTrue ((con, ss):instance) (name) : instance= 
+  let rec helper (inn:mapping list ):mapping list  = 
     (match inn with 
     [] -> raise  (Foo (name^" is not decleared"))
   | (x, state)::xs -> 
@@ -193,7 +182,7 @@ let rec setTrue ((con, ss):ss) (name) : ss=
   in (con, helper ss)
   ;;
 
-let add_Constain ((con, ss):ss) ((name, nowstate)) : ss= 
+let add_Constain ((con, ss):instance) ((name, nowstate)) : instance= 
   (*if compareState nowstate One then 
   let (con', ss') = setTrue (con, ss) name in 
   (List.append con' [(name, nowstate)], ss')
@@ -215,8 +204,11 @@ let rec can_fun (s:var) (prog:prog) :bool =
   | Exit _ -> false 
   ;;
 
-let rec forward origin (prog:prog) (evn: string list) ((history, now):(es*ss)) : es =
+let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcondition =
+  let (evn, (history, maps)) = precondition in 
   match prog with 
+  | _ -> [(history, maps)]
+  (*
     Nothing -> normalES (append_history_now history now)
     (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
   | Pause -> normalES (Con ((append_history_now history now),  Instance ([], make_nothing evn)))
@@ -265,6 +257,7 @@ let rec forward origin (prog:prog) (evn: string list) ((history, now):(es*ss)) :
   | Exit name -> 
     match now with 
       (con, ss) -> Con (history, Instance (con, List.append ss [("Exit_"^name, One )]))
+      *)
   ;;
 
 (*
@@ -275,10 +268,13 @@ let rec getAllTheSIgnals (prog) acc: string list =
   ;;
   *)
 
-let fowward_inter prog : es = 
+let fowward_inter prog : postcondition = 
   (*let evn = getAllTheSIgnals prog [] in *)
   (*let now = make_nothing evn in *)
-  normalES (forward prog prog [] (Emp, ([], []))) ;;
+  let precondition = ([], (Emp, ([]))) in 
+  (forward precondition prog prog)
+  
+  ;;
 
 let rec logical_check es :es = 
   match es with 
@@ -291,7 +287,7 @@ let rec logical_check es :es =
     | (_ , Bot) -> Bot 
     | _ -> Con (norES1, norES2)
     )
-| Or (es1, es2) -> 
+(*| Or (es1, es2) -> 
   let norES1 = logical_check es1 in 
   let norES2 = logical_check es2 in 
   (match (norES1, norES2) with 
@@ -300,6 +296,7 @@ let rec logical_check es :es =
   | (_, Bot) -> norES1
   | _ -> Or (norES1, norES2)
   )
+  *)
 | Instance (con, ss) -> 
   let con1 = deleteRedundent con in 
   let ss1 = deleteRedundent ss in 
@@ -310,10 +307,13 @@ let rec logical_check es :es =
 
 
 let analyse prog : string = 
-  let forward = fowward_inter prog in  
+  (*let forward = fowward_inter prog in  
   let logical_res = logical_check forward in 
   let info = "\n================\nForward res = " ^ string_of_es  forward ^ "\n" ^string_of_es logical_res ^ "\n" in 
    (info)
+   *)
+  "jkabsjdalkjslkad"
+   ;;
 
 
 let () =

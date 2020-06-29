@@ -5,7 +5,6 @@ type name = string
 type state = One | Zero
 type mapping = (var * state)
 
-
 (*signal set*)
 type instance = mapping list * mapping list 
            (*前面的是constrain,  后面的是signal assignment*)
@@ -19,7 +18,7 @@ type es = Bot
 
 type history = es 
 
-type current = ss
+type current = mapping list 
 
 type trace = history * current 
 

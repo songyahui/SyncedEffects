@@ -6,11 +6,11 @@ ocamlc -c ast.mli
 ocamlc -c parser.mli
 ocamlc -c parser.ml
 ocamlc -c lexer.ml
-ocamlc -c -o Askz3.cmo Askz3.ml
-ocamlc -c Askz3.cmo Pretty.ml
+#ocamlc -c -o Askz3.cmo Askz3.ml
+ocamlc -c Pretty.ml
 
 ocamlc -c -o Forward.cmo  FrontEnd/Forward.ml
 
-ocamlc -o hip parser.cmo  lexer.cmo Pretty.cmo Askz3.cmo Forward.cmo
+ocamlc -o hip parser.cmo  lexer.cmo Pretty.cmo Forward.cmo
 
 
