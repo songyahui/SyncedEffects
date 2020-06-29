@@ -29,6 +29,7 @@ type precondition = var list * trace
 type postcondition  = trace list
 
 
+(*
 let name_ (lhs: es) (rhs : es list ) : bool = 
 
 
@@ -40,7 +41,7 @@ let inclusion (lhs: es list) (rhs : es list ) : bool =
 
         ;;
 
-
+*)
 
         (*
   yes:      A |- C /\ B |- C
