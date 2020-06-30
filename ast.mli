@@ -85,4 +85,4 @@ type prog = Nothing
           | Emit of var
           | Present of var * prog * prog
           | Trap of name * prog
-          | Exit of name * int
+          | Exit of name 

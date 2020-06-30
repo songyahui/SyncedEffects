@@ -37,10 +37,10 @@ let rec append_es_es (es1) (es2) : es =
 
 
 
-let rec checkExit name (con, ss) : bool = 
+let rec checkExit name ss : bool = 
   match ss with 
     [] -> false
-  | (str, state)::xs -> if String.compare name str == 0 then true else checkExit name (con, xs)
+  | (str, state)::xs -> if String.compare name str == 0 then true else checkExit name  xs
 
   ;;
 
@@ -203,6 +203,48 @@ let rec can_fun (s:var) (prog:prog) :bool =
   | Exit _ -> false 
   ;;
 
+let rec getFirst (es:es) : instance =
+  match es with 
+  | Instance ins  -> ins
+  | Con (es1, es2) -> getFirst es1
+  | Kleene es1 -> getFirst es1
+  | _ -> raise ( Foo "getfirst exc")
+  ;;
+
+let rec getLast (es:es) : instance =
+  match es with 
+  | Instance ins  -> ins
+  | Con (es1, es2) -> getLast es2
+  | Kleene es1 -> getLast es1
+  | _ -> raise ( Foo "getLast exc")
+  ;;
+
+let rec getTail (es:es) : es =
+  match es with 
+  | Con (es1, es2) -> 
+    let temp = getTail es1 in
+    Con (temp , es2) 
+  | Kleene es1 -> Con (getTail es1 , es)
+  | _ -> raise ( Foo "getTail exc")
+  ;;
+
+let rec allDefalut ((con, map):instance) : bool = 
+  match map with 
+    [] ->  true 
+  | (var, state) :: xs  -> if compareState state Zero then  allDefalut (con, xs) else false
+  ;;
+
+let rec containExit (con: mapping list) : bool = 
+  match con with 
+    [] -> false 
+  | (var, state)::xs -> 
+    if String.length var > 4 then 
+      if (String.compare (String.sub var 0 3) "Exit") == 0 then true 
+      else containExit xs 
+    else containExit xs 
+
+  ;;
+
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcondition =
   let (evn, (history, curr)) = precondition in 
   match prog with 
@@ -218,6 +260,7 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
   | Present (s, p1, p2) -> 
     let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
     let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
+    if can_fun s toCheck == false then eff2 else 
     List.append eff1 eff2
 (*    if can_fun s origin == false then temp2 else 
     Or (temp1, temp2)
@@ -244,32 +287,80 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
     let (con, ss) = curr in 
     forward ((List.append evn [s]), (history, (con, List.append ss [(s, Zero)]) )) progIn toCheck
 
-  | Exit (name, d)-> 
+  | Exit (name)-> 
     let (con, ss) = curr in 
     forward (evn, (history, (List.append con [("Exit_"^name, One )] ,  ss ) )) Nothing toCheck
-
-
-
-   (*
-
+  
   | Loop pIn -> 
-    let eff = forward (evn, (history, curr )) pIn toCheck in 
-    let eff = forward (evn, (history, curr )) pIn toCheck in 
-
-    Con (history, Kleene temp)
+    let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
+    List.map (fun (newHis, newCur) -> 
+      let first = getFirst newHis in 
+      let last = newCur in 
+      let middle = getTail newHis in 
+      let (con, maps) = newCur in 
+      
+      let temp = (
+        if containExit con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        else 
+        (match (allDefalut first, allDefalut last) with 
+          (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
+        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (Instance last, middle)))
+        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
+        | (false, false) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
+        )
+      )
+      in splitESfromLast temp
+    )
+    eff
 
   | Trap (name, pIn) -> 
-    let temp = normalES (forward origin pIn evn (Emp, now)) in 
+    let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
+    List.map (fun (newHis, newCur) -> 
+      let first = getFirst newHis in 
+      let last = newCur in 
+      let middle = getTail newHis in 
+      let (con, maps) = newCur in 
+      
+      let temp = (
+        if checkExit ("Exit_"^name) con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        else 
+        (match (allDefalut first, allDefalut last) with 
+          (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
+        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (Instance last, middle)))
+        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
+        | (false, false) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
+        )
+      )
+      in splitESfromLast temp
+    )
+    eff
+
+    (*
+    let eff = forward (evn, (Emp, (history, curr) )) pIn toCheck in 
+    List.map (fun (newHis, newCur) -> 
+      let first = getFirst newHis in 
+      let last = newCur in 
+      let (con, maps) = newCur in 
+      if checkExit ("Exit_"^name) con then 
+      else Kleene (Con (history, Instance newCur))
+    )
+    eff
+
+
     let listOfFL = splitESfromLast temp in 
     let allRes = List.map (fun (f, l) -> 
       if checkExit ("Exit_"^name) l then f else Kleene f
     ) listOfFL
     in 
     disjunES allRes
+    *)
+   (*
+
+
+
     
 
       *)
-  | _ -> [(history, curr)]
   ;;
 
 (*

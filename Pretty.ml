@@ -108,7 +108,7 @@ let rec string_of_prog (p : prog) : string =
   | Emit s -> "(emit " ^ s ^ ")"
   | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
   | Trap (name, prog) -> "(trap " ^ name ^ " in " ^ string_of_prog prog ^" )"
-  | Exit (name, d) -> "(exit " ^ name ^"_"^ string_of_int d^ ")"
+  | Exit (name) -> "(exit " ^ name ^(*"_"^ string_of_int d^ *)")"
   ;;
 
 let string_of_sl (sl):string = 
