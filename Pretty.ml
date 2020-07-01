@@ -118,7 +118,8 @@ let string_of_sl (sl):string =
 let string_of_instance ((cons, mapping):instance) :string = 
   let temp = "(" ^ string_of_sl cons ^ ")" in 
   let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
-  temp ^ " & " ^temp1
+  (*temp ^ " & " ^*)
+  temp1
   ;;
 
 
@@ -134,7 +135,7 @@ let rec string_of_es (es:es) :string =
 
 let string_of_trace (trace :trace) :string = 
   let (his, cur) = trace in  
-  string_of_es his ^  ", " ^ string_of_instance cur ;;
+  string_of_es his ^  " . " ^ string_of_instance cur ;;
 
 let string_of_postcondition (post:postcondition):string = 
   List.fold_left (fun acc a -> acc ^ "\n" ^ string_of_trace a) "" post

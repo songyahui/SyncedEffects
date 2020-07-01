@@ -17,6 +17,64 @@ let rec append_history_now (history:es) ((cons, now) : instance) :es =
   | Kleene esIn -> Con (history , Instance (cons, now))
 ;;
 
+let compareState s1 s2 : bool =
+  match (s1, s2) with 
+    (One, One) -> true 
+  | (Zero, Zero) -> true 
+  | _ -> false 
+  ;;
+
+let union (assign : mapping list) :mapping list = 
+  let rec oneOfOne all1 v :bool =
+    match all1 with 
+      [] -> false 
+    | x::xs-> String.compare x v == 0
+  in 
+  let allOne = List.map (fun (a, b) -> a) (List.filter (fun (v, s) -> compareState s One) assign) in
+  print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allOne)^"\n");
+  let allZero = List.map (fun (a, b) -> a) (List.filter (fun (v, s) -> compareState s Zero) assign) in
+  print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allZero)^"\n");
+  List.fold_left (fun acc a -> if oneOfOne allOne a then List.append acc [(a,  One)] else List.append acc [(a,  Zero)]) [] allZero
+
+  ;;
+
+
+
+
+let rec oneOfFalse (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
+;;
+
+let rec checkHasFalse ss : bool = 
+  match ss with 
+  [] -> false 
+| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
+;;
+
+let rec oneOf (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
+;;
+
+let rec deleteRedundent sl : mapping list = 
+  match sl with 
+    [] -> sl 
+  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
+
+  ;;
+
+let rec unionTwoList (sl1) (sl2) : mapping list = 
+  let app = deleteRedundent (List.append sl1 sl2) in 
+  let rec helper acc sl : mapping list =  
+    match sl with
+      [] -> acc 
+    | (nm, sta)::xs -> if oneOfFalse (nm, sta) app then helper (List.append acc [(nm, One)]) xs else helper (List.append acc [(nm, sta)]) xs
+  in helper [] app
+  ;;
+
 
 let rec append_es_es (es1) (es2) : es = 
   match es1 with
@@ -26,7 +84,7 @@ let rec append_es_es (es1) (es2) : es =
         (match es2 with 
           Bot -> Bot 
         | Emp -> es1
-        | Instance (con2, ss2) -> Instance (List.append con1 con2, List.append ss1 ss2)
+        | Instance (con2, ss2) -> Instance (List.append con1 con2, unionTwoList ss1 ss2)
         | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
         | Kleene esIn2 -> Con (append_es_es es1 esIn2, es2)
         )
@@ -69,42 +127,20 @@ let rec splitESfromLast es: (es * instance) =
   | Con (es1, es2) -> 
     let (his, cu) = splitESfromLast es2 in 
     (Con (es1, his), cu)
-  | _ -> raise (Foo "splitESfromLast _")
+  | Kleene esIn -> 
+    (es, ([],[]))
+  (*let (his, curr) = splitESfromLast esIn in 
+    (Con (es, his), curr)
+    *)
+  | _ -> 
+  print_string (string_of_es es^"\n");
+  raise (Foo "splitESfromLast _")
   ;;
 
 
 
-let compareState s1 s2 : bool =
-  match (s1, s2) with 
-    (One, One) -> true 
-  | (Zero, Zero) -> true 
-  | _ -> false 
-  ;;
 
-let rec oneOf (var, state) ss : bool =
-  match ss with 
-    [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
-;;
 
-let rec deleteRedundent sl : mapping list = 
-  match sl with 
-    [] -> sl 
-  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
-
-  ;;
-
-let rec oneOfFalse (var, state) ss : bool =
-  match ss with 
-    [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
-;;
-
-let rec checkHasFalse ss : bool = 
-  match ss with 
-  [] -> false 
-| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
-;;
 
 
   
@@ -115,6 +151,7 @@ let rec normalES es: es =
       let norES2 = normalES es2 in 
       (match (norES1, norES2) with 
         (Emp, _) -> norES2 
+      | (_, Emp) -> norES1
       | (Bot, _) -> Bot 
       | (_ , Bot) -> Bot 
       | _ -> Con (norES1, norES2)
@@ -123,19 +160,18 @@ let rec normalES es: es =
   | Instance (con, ss) -> 
     let con1 = deleteRedundent con in 
     let ss1 = deleteRedundent ss in 
-    if checkHasFalse (ss1) then  Bot else (Instance (con1, ss1))
+    if checkHasFalse (con1) then  Bot else 
+    (Instance (con1, ss1))
   | Kleene esIn -> Kleene (normalES esIn)
   | _ -> es 
   ;;
 
-let rec unionTwoList (sl1) (sl2) : mapping list = 
-  let app = deleteRedundent (List.append sl1 sl2) in 
-  let rec helper acc sl : mapping list =  
-    match sl with
-      [] -> acc 
-    | (nm, sta)::xs -> if oneOfFalse (nm, sta) app then helper (List.append acc [(nm, One)]) xs else helper (List.append acc [(nm, sta)]) xs
-  in helper [] app
+let normal_post postcondition : postcondition = 
+  List.map (fun (a, b) -> (normalES a, b)) postcondition
+
   ;;
+
+
 
 let rec zip_es_es (es_1) (es_2) :es = 
 
@@ -208,7 +244,9 @@ let rec getFirst (es:es) : instance =
   | Instance ins  -> ins
   | Con (es1, es2) -> getFirst es1
   | Kleene es1 -> getFirst es1
-  | _ -> raise ( Foo "getfirst exc")
+  | _ -> 
+  print_string (string_of_es es);
+  raise ( Foo "getfirst exc")
   ;;
 
 let rec getLast (es:es) : instance =
@@ -221,6 +259,7 @@ let rec getLast (es:es) : instance =
 
 let rec getTail (es:es) : es =
   match es with 
+  | Instance ins -> Emp
   | Con (es1, es2) -> 
     let temp = getTail es1 in
     Con (temp , es2) 
@@ -292,21 +331,34 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
     forward (evn, (history, (List.append con [("Exit_"^name, One )] ,  ss ) )) Nothing toCheck
   
   | Loop pIn -> 
-    let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
+    let eff = normal_post (forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck )in 
+    print_string (string_of_postcondition eff^"\n");
     List.map (fun (newHis, newCur) -> 
       let first = getFirst newHis in 
       let last = newCur in 
       let middle = getTail newHis in 
       let (con, maps) = newCur in 
-      
+      print_string ("first" ^ string_of_instance first^"\n");
+      print_string ("last" ^ string_of_instance last^"\n");
+      print_string ("middle" ^ string_of_es middle^"\n");
       let temp = (
         if containExit con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
           (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
-        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (Instance last, middle)))
+        | (true, false) -> 
+        print_string ("I am here!"^"\n");
+        Con (Con (history, Instance curr), Kleene (Con (middle, Instance newCur)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
-        | (false, false) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
+        | (false, false) -> 
+
+        let res = normalES(Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es (Con (middle, Instance newCur)) (Instance first))))
+        
+        in 
+        print_string (string_of_es res^"\n");
+        res 
+        
+        
         )
       )
       in splitESfromLast temp
@@ -319,6 +371,7 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
       let first = getFirst newHis in 
       let last = newCur in 
       let middle = getTail newHis in 
+
       let (con, maps) = newCur in 
       
       let temp = (
@@ -328,39 +381,14 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
           (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
         | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (Instance last, middle)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
-        | (false, false) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
+        | (false, false) -> 
+        Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
         )
       )
       in splitESfromLast temp
     )
     eff
 
-    (*
-    let eff = forward (evn, (Emp, (history, curr) )) pIn toCheck in 
-    List.map (fun (newHis, newCur) -> 
-      let first = getFirst newHis in 
-      let last = newCur in 
-      let (con, maps) = newCur in 
-      if checkExit ("Exit_"^name) con then 
-      else Kleene (Con (history, Instance newCur))
-    )
-    eff
-
-
-    let listOfFL = splitESfromLast temp in 
-    let allRes = List.map (fun (f, l) -> 
-      if checkExit ("Exit_"^name) l then f else Kleene f
-    ) listOfFL
-    in 
-    disjunES allRes
-    *)
-   (*
-
-
-
-    
-
-      *)
   ;;
 
 (*
@@ -412,7 +440,7 @@ let rec logical_check es :es =
 let analyse prog : string = 
   let forward = fowward_inter prog in  
   (*let logical_res = logical_check forward in *)
-  let info = "\n================\nForward res = " ^ string_of_postcondition  forward  in 
+  let info = "\n================\nForward res = " ^ string_of_postcondition (normal_post forward)  in 
    (info)
 
    ;;

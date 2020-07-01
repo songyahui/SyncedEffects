@@ -32,8 +32,6 @@ rule token = parse
 | newline  { next_line lexbuf; token lexbuf }
 | "nothing" { NOTHING }
 | "pause" {PAUSE}  
-| "seq" {SEQ}
-| "par" {PAR}
 | "loop" {LOOP}
 | "signal" {SIGNAL}
 | "emit" {EMIT}
@@ -42,7 +40,9 @@ rule token = parse
 | "exit" {EXIT}
 | '(' { LPAR }
 | ')' { RPAR }
+| ';' { SIMI }
 
+| "||" { PAR }
 | id as str { VAR str }
 
 (*| "|-" {ENTIL}
@@ -67,13 +67,13 @@ rule token = parse
 | '|' { CHOICE }
 | '.' { CONCAT }
 | '"' { read_string (Buffer.create 17) lexbuf }
-
+| ',' { COMMA }
 | '[' { LBrackets }
 | ']' { RBrackets }
 | '{' { LBRACK  }
 | '}' { RBRACK }
-| ',' { COMMA }
-| ';' { SIMI }
+
+
 | '+' { PLUS }
 | '-' { MINUS }
 | '#' { SHARP }
