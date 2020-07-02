@@ -112,10 +112,12 @@ let rec string_of_prog (p : prog) : string =
   ;;
 
 let string_of_sl (sl):string = 
-  List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> "!" ^name)) "" sl
+  List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> (*"!" ^name*) "")) "" sl
 ;;
 
 let string_of_instance ((cons, mapping):instance) :string = 
+  if List.length mapping == 0 then ""
+  else 
   let temp = "(" ^ string_of_sl cons ^ ")" in 
   let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
   (*temp ^ " & " ^*)

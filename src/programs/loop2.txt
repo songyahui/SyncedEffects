@@ -1,25 +1,8 @@
-(signal A
-(signal B 
-(signal C
- (
- emit A;
+(signal A (signal B (signal C
+ ( emit A;
  (loop 
- (
-   emit B;
-   (
-   pause;
-   (
-   emit C;
+ (emit B;
+   (pause;
+   (emit C;
       pause
-   )
-   
-   )
-   
-   )
- )
- 
- )
-
-)
-)
-)
+   ))))))))

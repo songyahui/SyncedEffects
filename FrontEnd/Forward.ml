@@ -154,7 +154,12 @@ let rec normalES es: es =
       | (_, Emp) -> norES1
       | (Bot, _) -> Bot 
       | (_ , Bot) -> Bot 
+      (*
+      | (Con (ess, Kleene esIn), _) -> Con (ess, Kleene esIn)
+      | (Kleene esIn, _) -> Kleene esIn
+      *)
       | _ -> Con (norES1, norES2)
+
       )
 
   | Instance (con, ss) -> 
@@ -332,22 +337,22 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
   
   | Loop pIn -> 
     let eff = normal_post (forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck )in 
-    print_string (string_of_postcondition eff^"\n");
+    (*print_string (string_of_postcondition eff^"\n");*)
     List.map (fun (newHis, newCur) -> 
       let first = getFirst newHis in 
       let last = newCur in 
       let middle = getTail newHis in 
       let (con, maps) = newCur in 
-      print_string ("first" ^ string_of_instance first^"\n");
+      (*print_string ("first" ^ string_of_instance first^"\n");
       print_string ("last" ^ string_of_instance last^"\n");
       print_string ("middle" ^ string_of_es middle^"\n");
+      *)
       let temp = (
         if containExit con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
           (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
         | (true, false) -> 
-        print_string ("I am here!"^"\n");
         Con (Con (history, Instance curr), Kleene (Con (middle, Instance newCur)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
         | (false, false) -> 
@@ -355,7 +360,6 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
         let res = normalES(Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es (Con (middle, Instance newCur)) (Instance first))))
         
         in 
-        print_string (string_of_es res^"\n");
         res 
         
         
