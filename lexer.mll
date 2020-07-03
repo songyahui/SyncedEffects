@@ -41,6 +41,7 @@ rule token = parse
 | '(' { LPAR }
 | ')' { RPAR }
 | ';' { SIMI }
+| int      { INTE (int_of_string (Lexing.lexeme lexbuf)) }
 
 | "||" { PAR }
 | id as str { VAR str }
@@ -53,7 +54,6 @@ rule token = parse
 | "require" {REQUIRE}
 | "ensure" {ENSURE}
 | "include" {INCLUDE}
-| int      { INTE (int_of_string (Lexing.lexeme lexbuf)) }
 | "true" { TRUEE (bool_of_string (Lexing.lexeme lexbuf))}
 | "false" { FALSEE (bool_of_string (Lexing.lexeme lexbuf))}
 | '"'      { read_string (Buffer.create 17) lexbuf }

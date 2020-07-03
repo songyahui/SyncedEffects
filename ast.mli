@@ -20,12 +20,12 @@ type history = es
 
 type current = instance
 
-type trace = history * current 
+type trace = history * current * int 
 
-type precondition = var list * trace 
+type precondition = var list * (history * current) 
 
 
-type postcondition  = trace list
+type postcondition  = trace list 
 
 
 (*
@@ -85,4 +85,4 @@ type prog = Nothing
           | Emit of var
           | Present of var * prog * prog
           | Trap of name * prog
-          | Exit of name 
+          | Exit of name * int

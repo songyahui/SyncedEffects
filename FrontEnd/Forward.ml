@@ -172,7 +172,7 @@ let rec normalES es: es =
   ;;
 
 let normal_post postcondition : postcondition = 
-  List.map (fun (a, b) -> (normalES a, b)) postcondition
+  List.map (fun (a, b, d) -> (normalES a, b, d)) postcondition
 
   ;;
 
@@ -289,18 +289,24 @@ let rec containExit (con: mapping list) : bool =
 
   ;;
 
-let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcondition =
+let get_max a b :int = 
+  if a < b then b else a 
+  ;;
+
+let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcondition =
   let (evn, (history, curr)) = precondition in 
   match prog with 
 
-    Nothing -> [(history, curr)]
+    Nothing -> [(history, curr, 0)]
   | Emit s -> 
     let newCurr = setTrue curr s in 
-    [(history, newCurr)]
+    [(history, newCurr, 0)]
   | Pause -> 
-    let newHis = Con (history, Instance curr) in 
+    (*let newHis = Con (history, Instance curr) in 
     let newCurr = ([], make_nothing evn) in 
-    [(newHis, newCurr)]
+    [(newHis, newCurr, 1)]
+    *)
+    [(history, curr, 1)]
   | Present (s, p1, p2) -> 
     let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
     let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
@@ -312,18 +318,25 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
   | Seq (p1, p2) ->  
     let eff1 = forward (evn, (history, curr )) p1 toCheck in 
     List.flatten (List.map (fun a -> 
-      let (newHis, newCurr) = a in 
+      let (newHis, newCurr, k) = a in 
+      if k = 0 then 
       forward (evn, (newHis, newCurr)) p2 toCheck
+      else if k >= 2 then eff1
+      else 
+        let newHis' = Con (newHis, Instance newCurr) in 
+        let newCurr' = ([], make_nothing evn) in 
+        forward (evn, (newHis', newCurr')) p2 toCheck
     ) eff1)
   | Par (p1, p2) ->  
     let eff1 = forward (evn, (history, curr )) p1 toCheck in 
     (*print_string (string_of_es temp1^"\n");*)
     let eff2 = forward (evn, (history, curr )) p2 toCheck in 
     (*print_string (string_of_es temp2^"\n");*)
-    List.flatten (List.map (fun (his_a, cur_a) -> 
-      List.map (fun (his_b, cur_b) -> 
-        let temp = zip_es_es (Con(his_a,  Instance cur_a )) (Con (his_b, Instance cur_b ))
-        in splitESfromLast temp
+    List.flatten (List.map (fun (his_a, cur_a, k_a) -> 
+      List.map (fun (his_b, cur_b, k_b) -> 
+        let temp = zip_es_es (Con(his_a,  Instance cur_a )) (Con (his_b, Instance cur_b ))in 
+        let (a, b) = splitESfromLast temp in 
+        (a, b, get_max k_a k_b)
         ) eff2) eff1 )
 
     (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
@@ -331,55 +344,51 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
     let (con, ss) = curr in 
     forward ((List.append evn [s]), (history, (con, List.append ss [(s, Zero)]) )) progIn toCheck
 
-  | Exit (name)-> 
-    let (con, ss) = curr in 
-    forward (evn, (history, (List.append con [("Exit_"^name, One )] ,  ss ) )) Nothing toCheck
+  | Exit (name, d )-> 
+    [(history, curr, d+2)]
   
   | Loop pIn -> 
     let eff = normal_post (forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck )in 
     (*print_string (string_of_postcondition eff^"\n");*)
-    List.map (fun (newHis, newCur) -> 
+    List.map (fun (newHis, newCur, k) -> 
       let first = getFirst newHis in 
       let last = newCur in 
       let middle = getTail newHis in 
-      let (con, maps) = newCur in 
       (*print_string ("first" ^ string_of_instance first^"\n");
       print_string ("last" ^ string_of_instance last^"\n");
       print_string ("middle" ^ string_of_es middle^"\n");
       *)
       let temp = (
-        if containExit con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        if k>=2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
           (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
-        | (true, false) -> 
-        Con (Con (history, Instance curr), Kleene (Con (middle, Instance newCur)))
+        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (middle, Instance newCur)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
         | (false, false) -> 
-
         let res = normalES(Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es (Con (middle, Instance newCur)) (Instance first))))
         
         in 
-        res 
-        
-        
+        res  
         )
       )
-      in splitESfromLast temp
+      in 
+      let (a, b) = splitESfromLast temp in 
+        (a, b, k)
+      
     )
     eff
 
   | Trap (name, pIn) -> 
     let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
-    List.map (fun (newHis, newCur) -> 
+    List.map (fun (newHis, newCur, k) -> 
       let first = getFirst newHis in 
       let last = newCur in 
       let middle = getTail newHis in 
 
-      let (con, maps) = newCur in 
       
       let temp = (
-        if checkExit ("Exit_"^name) con then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        if k >= 2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
           (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
@@ -389,7 +398,12 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) :postcond
         Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
         )
       )
-      in splitESfromLast temp
+      in       
+      let (a, b) = splitESfromLast temp in 
+      if k ==2 then (a, b, 0)
+      else if k > 2 then (a, b, k - 1)
+      else (a, b, k)
+
     )
     eff
 
