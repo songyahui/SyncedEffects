@@ -1,0 +1,20 @@
+(signal A (signal B (signal C (signal D
+  
+(
+(trap 
+  (emit A;
+    (pause;
+      (emit B;
+        ((exit 0);
+          emit C
+        )
+      )
+    )
+  )
+);
+emit D
+)
+
+
+))))
+
