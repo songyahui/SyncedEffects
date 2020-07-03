@@ -14,7 +14,7 @@ type es = Bot
         | Emp 
         | Instance of instance 
         | Con of es * es
-        | Kleene of es
+        | Omega of es
 
 type history = es 
 
@@ -54,11 +54,11 @@ yes:     A |- C /\ A |- B
 
   no:
 
-        A |- C /\ A |- B
+        [A] |- [C]  \/ [A] |- [B]
         --------------------
-         A  |- C \/  B
+         [A]  |- [C, B]
 
-         a > 0 |- a = 1 /\ a > 0 |- a > 1   -> false 
+         a > 0 |- a = 1 \/ a > 0 |- a > 1   -> false 
          -----------------
          a >0 |- a = 1 \/ a > 1     -> true 
 
@@ -84,5 +84,5 @@ type prog = Nothing
           | Declear of var * prog
           | Emit of var
           | Present of var * prog * prog
-          | Trap of name * prog
-          | Exit of name * int
+          | Trap of prog
+          | Exit of int

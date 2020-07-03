@@ -14,7 +14,7 @@ let rec append_history_now (history:es) ((cons, now) : instance) :es =
   | Emp -> Instance (cons, now) 
   | Instance _  ->  Con(history, Instance (cons, now))
   | Con (es1, es2) -> Con (es1, append_history_now es2 (cons, now))
-  | Kleene esIn -> Con (history , Instance (cons, now))
+  | Omega esIn -> Con (history , Instance (cons, now))
 ;;
 
 let compareState s1 s2 : bool =
@@ -31,9 +31,9 @@ let union (assign : mapping list) :mapping list =
     | x::xs-> String.compare x v == 0
   in 
   let allOne = List.map (fun (a, b) -> a) (List.filter (fun (v, s) -> compareState s One) assign) in
-  print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allOne)^"\n");
+  (*print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allOne)^"\n");*)
   let allZero = List.map (fun (a, b) -> a) (List.filter (fun (v, s) -> compareState s Zero) assign) in
-  print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allZero)^"\n");
+  (*print_string ((List.fold_left (fun acc a -> acc ^"," ^ a) "" allZero)^"\n");*)
   List.fold_left (fun acc a -> if oneOfOne allOne a then List.append acc [(a,  One)] else List.append acc [(a,  Zero)]) [] allZero
 
   ;;
@@ -86,10 +86,10 @@ let rec append_es_es (es1) (es2) : es =
         | Emp -> es1
         | Instance (con2, ss2) -> Instance (List.append con1 con2, unionTwoList ss1 ss2)
         | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
-        | Kleene esIn2 -> Con (append_es_es es1 esIn2, es2)
+        | Omega esIn2 -> Con (append_es_es es1 esIn2, es2)
         )
   | Con (es11, es12) -> Con (es11, append_es_es es12 es2)
-  | Kleene esIn1 -> Con (es1 , append_es_es esIn1 es2)
+  | Omega esIn1 -> Con (es1 , append_es_es esIn1 es2)
 
   ;;
 
@@ -127,7 +127,7 @@ let rec splitESfromLast es: (es * instance) =
   | Con (es1, es2) -> 
     let (his, cu) = splitESfromLast es2 in 
     (Con (es1, his), cu)
-  | Kleene esIn -> 
+  | Omega esIn -> 
     (es, ([],[]))
   (*let (his, curr) = splitESfromLast esIn in 
     (Con (es, his), curr)
@@ -146,17 +146,19 @@ let rec splitESfromLast es: (es * instance) =
   
 let rec normalES es: es =
   match es with 
-    Con (es1, es2) -> 
+    Con (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
+  | Con (es1, es2) -> 
       let norES1 = normalES es1 in 
       let norES2 = normalES es2 in 
+      (*print_string (string_of_es norES1);*)
       (match (norES1, norES2) with 
         (Emp, _) -> norES2 
       | (_, Emp) -> norES1
       | (Bot, _) -> Bot 
       | (_ , Bot) -> Bot 
       (*
-      | (Con (ess, Kleene esIn), _) -> Con (ess, Kleene esIn)
-      | (Kleene esIn, _) -> Kleene esIn
+      | (Con (ess, Omega esIn), _) -> Con (ess, Omega esIn)
+      | (Omega esIn, _) -> Omega esIn
       *)
       | _ -> Con (norES1, norES2)
 
@@ -167,7 +169,7 @@ let rec normalES es: es =
     let ss1 = deleteRedundent ss in 
     if checkHasFalse (con1) then  Bot else 
     (Instance (con1, ss1))
-  | Kleene esIn -> Kleene (normalES esIn)
+  | Omega esIn -> Omega (normalES esIn)
   | _ -> es 
   ;;
 
@@ -176,40 +178,78 @@ let normal_post postcondition : postcondition =
 
   ;;
 
+let string_of_trace (trace :trace) :string = 
+  let (his, cur, d) = trace in  
+  let temp = normalES (Con(his, Instance cur))in
+  string_of_es temp;;
 
+let string_of_postcondition (post:postcondition):string = 
+  List.fold_left (fun acc a -> acc  ^ string_of_trace a ^ "\n") "" post
+  ;;
 
-let rec zip_es_es (es_1) (es_2) :es = 
+let rec length_of_es (es:es) : int = 
+  match es with 
+    Emp -> 0
+  | Instance ins -> 1
+  | Con (es1, es2) -> length_of_es es1 + length_of_es es2
+  | _ -> raise (Foo "length_of_es")
+  ;;
 
-  let rec helper acc es1 es2: es = 
-    match es1 with 
-      Bot -> Con (acc,  es2)
-    | Emp -> Con (acc, es2)
-    | Instance (con1, ss1) -> 
-        (match es2 with 
-          Bot -> Con (acc, es1)
-        | Emp -> Con (acc, es1)
-        | Instance (con2, ss2) -> 
-        (*
-          print_string ("\n----------\n inportant \n" ^ string_of_es es1 ^ " ::: " ^ string_of_es es2^"\n");
-          print_string ("\n kkkkk \n" ^ string_of_es (normalES (Instance (con1, ss2))) ^ " ::: " ^ string_of_es (normalES (Instance (con2, ss1) ))^"\n");
+let rec esToList (es:es) : instance list = 
+  match es with 
+    Instance inI -> [inI]
+  | Con (es1, es2) -> List.append (esToList es1) (esToList es2)
+  | _ -> raise (Foo "esToList error")
+  ;;
 
-          print_string (string_of_sl (unionTwoList ss1 ss2));
-          *)
-          (match (normalES (Instance (con1, ss2)), normalES (Instance (con2, ss1) )) with 
-            (Bot, _) -> Bot
-          | (_, Bot) -> Bot
-          | _ -> Con (acc, Instance (List.append con1 con2, unionTwoList ss1 ss2))
-          )
+let rec listToES (inL:instance list) : es = 
+  match inL with 
+    [] -> Emp
+  | x::xs -> Con (Instance x, listToES xs)
+  ;;
 
+let get_max a b :int = 
+  if a < b then b else a 
+  ;;
 
-        | Con (es21, es22) -> Con  (helper acc es1 es21, es22)
-        | Kleene es2In -> raise (Foo "zip_es_es in ");
-        )
-    | Con(es11, es12) -> Con  (helper acc es11 es2, es12)
-    | Kleene es1In -> raise (Foo "zip_es_es out ");
+let rec zip_es_es (es_1, k1) (es_2, k2) :(es * int) = 
 
+  let listOfES1 = esToList (normalES es_1) in
+  let listOfES2 = esToList (normalES es_2) in
+  
+  let rec helper_zip (acc:instance list) (list1:instance list) (list2:instance list) (len:int): instance list = 
+    if len == 0 then  acc
+    else 
+    match (list1, list2) with 
+      (xs, []) -> List.append acc xs 
+    | ([], xs) -> List.append acc xs 
+    | ((con1, ss1)::xs, (con2, ss2)::ys) -> 
+      let curr = (List.append con1 con2, unionTwoList ss1 ss2) in 
+      helper_zip (List.append acc [curr]) xs ys (len -1)
+  in 
+  if get_max k1 k2 != 0 then 
+    if k1 > k2 && List.length listOfES1 < List.length listOfES2 then 
+      let length = List.length listOfES1 in  
+      let ziplist = helper_zip [] (listOfES1) (listOfES2) length in  
+      (normalES (listToES ziplist) , k1)
+    else if k1 < k2 && List.length listOfES1 > List.length listOfES2 then 
+      let length = List.length listOfES2 in  
+      let ziplist = helper_zip [] (listOfES1) (listOfES2) length in  
+      (normalES (listToES ziplist) , k2)
+    else if k1 > k2 && List.length listOfES1 > List.length listOfES2 then 
+      let length = List.length listOfES2 in  
+      let ziplist = helper_zip [] (listOfES1) (listOfES2) length in  
+      (normalES (listToES ziplist) , k2)
+    else 
+      let length = List.length listOfES1 in  
+      let ziplist = helper_zip [] (listOfES1) (listOfES2) length in  
+      (normalES (listToES ziplist) , k1)
 
-  in helper Emp (normalES es_1) (normalES es_2)
+  else 
+  let length = get_max (List.length listOfES1) (List.length listOfES2) in 
+  
+  let ziplist = helper_zip [] (listOfES1) (listOfES2) length in  
+  (normalES (listToES ziplist) , 0)
   ;;
 
 let rec setTrue ((con, ss):instance) (name) : instance= 
@@ -240,7 +280,7 @@ let rec can_fun (s:var) (prog:prog) :bool =
   | Declear (v, p) -> can_fun s p 
   | Emit str -> if String.compare str s == 0 then true else false 
   | Present (v, p1, p2) -> can_fun s p1 || can_fun s p2
-  | Trap (n, p) -> can_fun s p 
+  | Trap p -> can_fun s p 
   | Exit _ -> false 
   ;;
 
@@ -248,7 +288,7 @@ let rec getFirst (es:es) : instance =
   match es with 
   | Instance ins  -> ins
   | Con (es1, es2) -> getFirst es1
-  | Kleene es1 -> getFirst es1
+  | Omega es1 -> getFirst es1
   | _ -> 
   print_string (string_of_es es);
   raise ( Foo "getfirst exc")
@@ -258,7 +298,7 @@ let rec getLast (es:es) : instance =
   match es with 
   | Instance ins  -> ins
   | Con (es1, es2) -> getLast es2
-  | Kleene es1 -> getLast es1
+  | Omega es1 -> getLast es1
   | _ -> raise ( Foo "getLast exc")
   ;;
 
@@ -268,7 +308,7 @@ let rec getTail (es:es) : es =
   | Con (es1, es2) -> 
     let temp = getTail es1 in
     Con (temp , es2) 
-  | Kleene es1 -> Con (getTail es1 , es)
+  | Omega es1 -> Con (getTail es1 , es)
   | _ -> raise ( Foo "getTail exc")
   ;;
 
@@ -289,24 +329,21 @@ let rec containExit (con: mapping list) : bool =
 
   ;;
 
-let get_max a b :int = 
-  if a < b then b else a 
-  ;;
+
 
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcondition =
   let (evn, (history, curr)) = precondition in 
   match prog with 
 
-    Nothing -> [(history, curr, 0)]
+    Nothing -> [(normalES history, curr, 0)]
   | Emit s -> 
     let newCurr = setTrue curr s in 
-    [(history, newCurr, 0)]
+    [(normalES history, newCurr, 0)]
   | Pause -> 
-    (*let newHis = Con (history, Instance curr) in 
+    let newHis = Con (history, Instance curr) in 
     let newCurr = ([], make_nothing evn) in 
-    [(newHis, newCurr, 1)]
-    *)
-    [(history, curr, 1)]
+    [(normalES newHis, newCurr, 0)]
+
   | Present (s, p1, p2) -> 
     let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
     let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
@@ -325,7 +362,8 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
       else 
         let newHis' = Con (newHis, Instance newCurr) in 
         let newCurr' = ([], make_nothing evn) in 
-        forward (evn, (newHis', newCurr')) p2 toCheck
+        [(newHis', newCurr', k)]
+    
     ) eff1)
   | Par (p1, p2) ->  
     let eff1 = forward (evn, (history, curr )) p1 toCheck in 
@@ -334,9 +372,9 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     (*print_string (string_of_es temp2^"\n");*)
     List.flatten (List.map (fun (his_a, cur_a, k_a) -> 
       List.map (fun (his_b, cur_b, k_b) -> 
-        let temp = zip_es_es (Con(his_a,  Instance cur_a )) (Con (his_b, Instance cur_b ))in 
+        let (temp, kF) = (zip_es_es ( (Con(his_a,  Instance cur_a )), k_a) ((Con (his_b, Instance cur_b )), k_b))in 
         let (a, b) = splitESfromLast temp in 
-        (a, b, get_max k_a k_b)
+        (a, b, kF)
         ) eff2) eff1 )
 
     (*normalES (append_history_now history (List.append now (make_nothing evn)))*)
@@ -344,16 +382,17 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     let (con, ss) = curr in 
     forward ((List.append evn [s]), (history, (con, List.append ss [(s, Zero)]) )) progIn toCheck
 
-  | Exit (name, d )-> 
-    [(history, curr, d+2)]
+  | Exit d-> 
+    [(normalES history, curr, d+2)]
   
   | Loop pIn -> 
     let eff = normal_post (forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck )in 
     (*print_string (string_of_postcondition eff^"\n");*)
     List.map (fun (newHis, newCur, k) -> 
-      let first = getFirst newHis in 
+      let first = getFirst (normalES newHis) in 
       let last = newCur in 
-      let middle = getTail newHis in 
+      let middle = getTail (normalES newHis) in 
+
       (*print_string ("first" ^ string_of_instance first^"\n");
       print_string ("last" ^ string_of_instance last^"\n");
       print_string ("middle" ^ string_of_es middle^"\n");
@@ -362,11 +401,11 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
         if k>=2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
-          (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
-        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (middle, Instance newCur)))
-        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
+          (true , true) -> Con (Con (history, Instance curr), Omega ( middle) )
+        | (true, false) -> Con (Con (history, Instance curr), Omega (Con (middle, Instance newCur)))
+        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (Con (middle, Instance first)))
         | (false, false) -> 
-        let res = normalES(Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es (Con (middle, Instance newCur)) (Instance first))))
+        let res = normalES(Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (append_es_es (Con (middle, Instance newCur)) (Instance first))))
         
         in 
         res  
@@ -374,35 +413,42 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
       )
       in 
       let (a, b) = splitESfromLast temp in 
-        (a, b, k)
+      (normalES a, b, k)
       
     )
     eff
 
-  | Trap (name, pIn) -> 
+  | Trap pIn -> 
     let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
+    print_string (string_of_postcondition eff^"\n");
     List.map (fun (newHis, newCur, k) -> 
-      let first = getFirst newHis in 
+
+      let first = getFirst (normalES newHis) in 
       let last = newCur in 
-      let middle = getTail newHis in 
+      let middle = getTail (normalES newHis) in 
 
       
       let temp = (
-        if k >= 2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        if k >= 2 then 
+        (print_string ("I am here\n");
+        append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
+        )
         else 
         (match (allDefalut first, allDefalut last) with 
-          (true , true) -> Con (Con (history, Instance curr), Kleene ( middle) )
-        | (true, false) -> Con (Con (history, Instance curr), Kleene (Con (Instance last, middle)))
-        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (Con (middle, Instance first)))
+          (true , true) -> Con (Con (history, Instance curr), Omega ( middle) )
+        | (true, false) -> Con (Con (history, Instance curr), Omega (Con (Instance last, middle)))
+        | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (Con (middle, Instance first)))
         | (false, false) -> 
-        Con (append_es_es (Con (history, Instance curr)) (Instance first), Kleene (append_es_es middle (Instance first)))
+        Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (append_es_es middle (Instance first)))
         )
       )
       in       
       let (a, b) = splitESfromLast temp in 
       if k ==2 then (a, b, 0)
       else if k > 2 then (a, b, k - 1)
-      else (a, b, k)
+      else 
+      (normalES a, b, k)
+      
 
     )
     eff
@@ -421,7 +467,7 @@ let fowward_inter prog : postcondition =
   (*let evn = getAllTheSIgnals prog [] in *)
   (*let now = make_nothing evn in *)
   let precondition = ([], (Emp, ([], []))) in 
-  (forward precondition prog prog)
+   (forward precondition prog prog)
   
   ;;
 
@@ -450,7 +496,7 @@ let rec logical_check es :es =
   let con1 = deleteRedundent con in 
   let ss1 = deleteRedundent ss in 
   if checkHasFalse (List.append con1 ss1) then  Bot else (Instance (con1, ss1))
-| Kleene esIn -> Kleene (logical_check esIn)
+| Omega esIn -> Omega (logical_check esIn)
 | _ -> es 
 ;;
 
