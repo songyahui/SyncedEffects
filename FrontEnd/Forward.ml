@@ -334,7 +334,6 @@ let rec containExit (con: mapping list) : bool =
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcondition =
   let (evn, (history, curr)) = precondition in 
   match prog with 
-
     Nothing -> [(normalES history, curr, 0)]
   | Emit s -> 
     let newCurr = setTrue curr s in 

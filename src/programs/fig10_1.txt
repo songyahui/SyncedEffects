@@ -1,2 +1,2 @@
 (signal S1
-(present S1 (emit S1) (emit S1)))
+(present S1 emit S1 emit S1))
