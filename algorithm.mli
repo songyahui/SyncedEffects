@@ -15,6 +15,8 @@ type es = Bot
         | Instance of instance 
         | Con of es * es
         | Kleene of es
+        | Any
+        | Omega of es
 ;;
 type history = es;;
 type current = mapping list;;
@@ -33,6 +35,8 @@ let rec nullable_single (i:es) : bool =
     |Con(a, b) -> nullable_single a && nullable_single b
     |Kleene(_) -> true
     |Bot -> false
+    |Any -> false
+    |Omega(_) -> false
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -79,6 +83,8 @@ let rec find_first_element (e:es list) : name list list =
       |Con(a, b) -> if nullable_single a then join (find_first_element_single a) (find_first_element_single b)
         else find_first_element_single a
       |Kleene(a) -> find_first_element_single a
+      |Omega(a) -> find_first_element_single a
+      |Any -> [["_"]]
       |_ -> []
   in match e with
     |hd::tl -> let rec remove_empty (i:name list list) : name list list = 
@@ -109,12 +115,15 @@ let rec unfold (element:name list) (expr:es list) : es list =
     match e with
       |Instance(a, b) -> let result = rewrite b in 
         if result = [] then [Bot]
+        else if element = ["_"] then [Emp]
         else if contains element (rewrite b) then [Emp] 
         else [Bot]
       |Con(a,b) -> if nullable_single a then join_single (flatten (unfold_single element a) b) (unfold_single element b)
         else flatten (unfold_single element a) b
       |Emp -> [Bot]
+      |Any -> [Emp]
       |Bot -> [Bot]
+      |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
   in match expr with
     |hd::tl -> join_single (unfold_single element hd) (unfold element tl)
@@ -144,7 +153,8 @@ let rec evaluate elements memory (lhs:es list) (rhs:es list) : bool =
   match elements with
     |hd::tl -> let dev_lhs = normalize (unfold hd lhs) and dev_rhs = normalize (unfold hd rhs) in
       let null_lhs = nullable dev_lhs and null_rhs = nullable dev_rhs and i = INC(dev_lhs, dev_rhs) in
-      if null_lhs && not null_rhs then false
+      if dev_rhs = [Bot] then false
+      else if null_lhs && not null_rhs then false
       else if check_include i memory then evaluate tl memory lhs rhs
       else let m = i::memory in
         evaluate tl memory lhs rhs && evaluate (find_first_element dev_lhs) m dev_lhs dev_rhs
