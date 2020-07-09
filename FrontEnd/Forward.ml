@@ -280,7 +280,7 @@ let rec can_fun (s:var) (prog:prog) :bool =
   | Declear (v, p) -> can_fun s p 
   | Emit str -> if String.compare str s == 0 then true else false 
   | Present (v, p1, p2) -> can_fun s p1 || can_fun s p2
-  | Trap p -> can_fun s p 
+  | Trap (mn, p) -> can_fun s p 
   | Exit _ -> false 
   ;;
 
@@ -381,7 +381,7 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     let (con, ss) = curr in 
     forward ((List.append evn [s]), (history, (con, List.append ss [(s, Zero)]) )) progIn toCheck
 
-  | Exit d-> 
+  | Exit (mn, d)-> 
     [(normalES history, curr, d+2)]
   
   | Loop pIn -> 
@@ -417,7 +417,7 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     )
     eff
 
-  | Trap pIn -> 
+  | Trap (mn, pIn) -> 
     let eff = forward (evn, (Emp, ([], make_nothing evn) )) pIn toCheck in 
     print_string (string_of_postcondition eff^"\n");
     List.map (fun (newHis, newCur, k) -> 

@@ -107,8 +107,8 @@ let rec string_of_prog (p : prog) : string =
   | Declear (s, prog) -> "(signal " ^ s ^ " " ^ string_of_prog prog ^" )"
   | Emit s -> "(emit " ^ s ^ ")"
   | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
-  | Trap (prog) -> "(trap "  ^ string_of_prog prog ^" )"
-  | Exit  d -> "(exit " ^ string_of_int d^ ")"
+  | Trap (mn, prog) -> "(trap "  ^ mn ^" " ^ string_of_prog prog ^" )"
+  | Exit (mn, d) -> "(exit " ^ mn ^" " ^ string_of_int d^ ")"
   ;;
 
 let string_of_sl (sl):string = 
