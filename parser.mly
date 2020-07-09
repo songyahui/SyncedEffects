@@ -39,8 +39,8 @@ prog:
 | LPAR SIGNAL s = VAR p = prog RPAR { Declear (s, p)}
 | EMIT s = VAR  {Emit s}
 | LPAR PRESENT s = VAR p1 = prog p2 = prog RPAR { Present (s, p1, p2)}
-| LPAR TRAP p1 = prog RPAR {Trap p1}
-| LPAR EXIT d = INTE RPAR {Exit d}
+| LPAR TRAP mn = VAR p1 = prog RPAR {Trap (mn, p1)}
+| LPAR EXIT mn = VAR d = INTE RPAR {Exit (mn, d)}
 
 
 

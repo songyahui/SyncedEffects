@@ -14,6 +14,8 @@ type es = Bot
         | Emp 
         | Instance of instance 
         | Con of es * es
+        | Kleene of es
+        | Any
         | Omega of es
 
 type history = es 
@@ -84,5 +86,5 @@ type prog = Nothing
           | Declear of var * prog
           | Emit of var
           | Present of var * prog * prog
-          | Trap of prog
-          | Exit of int
+          | Trap of name * prog
+          | Exit of name * int
