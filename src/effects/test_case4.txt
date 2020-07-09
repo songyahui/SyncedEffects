@@ -1,0 +1,1 @@
+let lhs = [Con(Con(a, b), d); Con(b, d); d] and rhs = [Con(Con(Kleene(a), Kleene(b)), d)];;

@@ -1,0 +1,1 @@
+let lhs = [Con(a,d);Con(b,d)] and rhs = [a;b];;

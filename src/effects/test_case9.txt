@@ -1,0 +1,1 @@
+let lhs = [Omega(a)] and rhs = [Omega(Con(Any, a))];;
