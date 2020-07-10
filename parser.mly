@@ -6,29 +6,78 @@
 %token <int> INTE
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
-(*CHOICE LPAR RPAR CONCAT OMEGA POWER PLUS MINUS TRUE FALSE DISJ CONJ   ENTIL INTT BOOLT VOIDT 
-%token LBRACK RBRACK  SIMI  IF ELSE REQUIRE ENSURE LSPEC RSPEC RETURN LBrackets  RBrackets
-%token  GT LT EQ GTEQ LTEQ INCLUDE SHARP EQEQ UNDERLINE KLEENE NEGATION DEADLINE RESET TASSERTKEY TRIPLE DELAY
+%token EOF ENTIL EMPTY UNDERLINE DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE OMEGA
+
+%left CONCAT
+
+
+
+(*CHOICE LPAR RPAR CONCAT   PLUS MINUS TRUE FALSE  CONJ    INTT BOOLT VOIDT 
+%token LBRACK RBRACK  SIMI  IF ELSE REQUIRE ENSURE LSPEC RSPEC RETURN 
+%token  GT LT EQ GTEQ LTEQ INCLUDE SHARP EQEQ UNDERLINE  NEGATION DEADLINE RESET TASSERTKEY TRIPLE DELAY
 %token <string> EVENT
 
 %left CHOICE
-%left CONCAT
+
 %left DISJ
 %left CONJ
 %token <string> STRING
-EOF
+
 *)
 
 (*%token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR*)
 
 
 
-%start prog 
+%start prog  ee
 %type <Ast.prog> prog
-
+%type <(Ast.inclusion) list > ee
 
 
 %%
+
+ee: 
+| EOF {[]}
+| a = entailment SIMI r = ee { append [a] r }
+
+
+
+singleVAR: var = VAR {[var]}
+
+existVar:
+| {[]}
+| p = singleVAR {p}
+| p1 = singleVAR  COMMA  p2 = existVar {append p1 p2 }
+
+
+es:
+| EMPTY { Emp }
+| UNDERLINE { Any }
+| LBrackets signals = existVar RBrackets 
+{
+  let temp = List.map (fun a -> (a, One)) signals in 
+  Instance ([], temp) }
+| LPAR r = es RPAR { r }
+| a = es CONCAT b = es { Con(a, b) } 
+| LPAR a = es POWER KLEENE RPAR{Kleene a}
+| LPAR r = es POWER OMEGA RPAR{ Omega r }
+| LPAR r = es POWER n = INTE RPAR{ Ntimed (r, n) }
+
+(*
+| str = EVENT p=parm { Event ( str, p) }
+| a = es CHOICE b = es { ESOr(a, b) }
+| a = es CONJ b = es { ESAnd(a, b) }
+| LPAR r = es POWER t = term RPAR { Ttimes(r, t )}
+*)
+
+effect:
+|  r = es  { [r] }
+| a = effect  DISJ  b=effect  {List.append a b}
+
+
+entailment:
+| lhs = effect   ENTIL   rhs = effect {INC (lhs, rhs)}
+
 
 prog:
 | NOTHING { Nothing }

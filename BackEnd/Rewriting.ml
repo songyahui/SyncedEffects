@@ -7,9 +7,7 @@ open Lexer
 open Pretty
 open Sys
 
-type inclusion =
-  INC of es list * es list
-;;
+
 
 let rec nullable_single (i:es) : bool =
   match i with
@@ -193,15 +191,38 @@ let rec check_containment (lhs:es list) (rhs:es list) =
   (get_bool result,  (Node((translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)), [get_tree (result)])))
 ;;
 
-let a = Any;;
+let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([], [("A", Zero); ("B", Zero); ("C", One)]) and c = Instance([], [("A", One); ("B", Zero); ("C", Zero)]) and d = Instance([], [("D", One); ("B", Zero); ("C", Zero)]);;
 
-let b = Any;;
 
 let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
 
 
+(*
 let main = 
   let (re, temp) = check_containment lhs rhs in 
   let tree = printTree ~line_prefix:"* " ~get_name ~get_children temp in 
 
   print_string (tree);
+  *)
+
+let () =
+  let inputfile = (Sys.getcwd () ^ "/" ^ Sys.argv.(1)) in
+(*    let outputfile = (Sys.getcwd ()^ "/" ^ Sys.argv.(2)) in
+print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
+  let ic = open_in inputfile in
+  try
+      let lines =  (input_lines ic ) in
+      let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
+      let prog = Parser.ee Lexer.token (Lexing.from_string line) in
+
+      (*print_string (string_of_prog prog^"\n");*)
+      print_string ( (string_of_ prog) ^"\n");
+      
+      flush stdout;                (* 现在写入默认设备 *)
+      close_in ic                  (* 关闭输入通道 *)
+
+    with e ->                      (* 一些不可预见的异常发生 *)
+      close_in_noerr ic;           (* 紧急关闭 *)
+      raise e                      (* 以出错的形式退出: 文件已关闭,但通道没有写入东西 *)
+
+   ;;
