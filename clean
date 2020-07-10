@@ -8,3 +8,4 @@ rm parser.ml
 rm parser.mli
 
 rm hip
+rm sleek
