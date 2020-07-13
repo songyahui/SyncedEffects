@@ -52,10 +52,19 @@ rule token = parse
 | '[' { LBrackets }
 | ']' { RBrackets }
 | ',' { COMMA }
-| eof { EOF }
+
 | '^' { POWER }
 | 'w' { OMEGA }
 | '*' {KLEENE}
+| "<>" {FUTURE}  
+| "[]" {GLOBAL}
+| "->" {IMPLY}
+| '!' {LTLNOT}
+| 'X' {NEXT}
+| 'U' {UNTIL}
+| "&&" {LILAND}
+| "||" {LILOR}
+| eof { EOF }
 
 (*
 

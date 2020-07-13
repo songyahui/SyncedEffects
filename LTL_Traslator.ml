@@ -7,20 +7,18 @@ open Pretty
 open Printf
 
 
-let rec translateLTL (pi:pure) (ltl:ltl) (varList:string list) :(pure * es * string list) =
+let rec translateLTL (ltl:ltl) : es list =
   match ltl with 
-    Lable str -> (pi, Event (str, None), varList)
+    Lable str -> [Instance ([], [(str, One)]) ]
   | Next l -> 
-    let (piii, ess, varList') =  translateLTL pi l varList in 
-    (piii,  Cons (Underline,ess), varList')
+    List.map (fun a -> Con (Any, a)) (translateLTL l)
+    (*
   | Until (l1, l2) -> 
-      let newVar = getAfreeVar varList in 
-      let newPi =pi (* PureAnd (pi, Gt (Var newVar, Number 0)) *) in 
-      let (pi1, ess1, varList1) =  translateLTL newPi l1 (newVar :: varList) in 
-      let (pi2, ess2, varList2) =  translateLTL pi1 l2 varList1 in 
-      let prefix = Ttimes (ess1, Var newVar) in 
+      let temp1 =  translateLTL l1 in 
+      let temp2 =  translateLTL l2 in 
+      let prefix = Kleene (ess1) in 
       (*(pi2, Cons (Cons(ess1, Kleene (ess1)) , ess2), varList2)*)
-      (pi2, Cons (prefix, ess2), varList2)
+      Cons (prefix, ess2)
   | Global l -> 
       let (piii , ess1, varList') =  translateLTL pi l varList in 
 
@@ -47,6 +45,7 @@ let rec translateLTL (pi:pure) (ltl:ltl) (varList:string list) :(pure * es * str
       let (pi1, ess1, varList1) =  translateLTL pi l1 varList in 
       let (pi2, ess2, varList2) =  translateLTL pi1 l2 varList1 in 
       (pi2, ESOr (ess1, ess2), varList2)
+*)
   ;;
 
 
@@ -60,31 +59,24 @@ let main =
     let specs:(string list) =  (input_lines ic) in 
     let lines = List.fold_right (fun x acc -> acc ^ "\n" ^ x) ( specs) "" in 
     let ltlList:(ltl list) = Parser.ltl_p Lexer.token (Lexing.from_string  lines)  in
-(*
-    let ential_result=List.fold_right (fun ltl acc->  
-    let (pi, esss, varL) =translateLTL TRUE ltl [] in 
-    let rhs = "|- "^ showES esss ^ ";" in
-    acc ^ testASingle pi trafic rhs
-    ) (ltlList) "" in 
-    print_string (ential_result^"\n");
-    *)
+
    
     let esList = List.map (fun ltl -> 
-      let (a, b, c) = (translateLTL TRUE ltl []) in 
-      Effect (a, b)   ) ltlList in
+      translateLTL ltl ) ltlList in
     (*
     print_string (showLTLList ^ "\n==============\n");
     *)
     
     let producte = List.combine ltlList esList in
 
-    let result = List.fold_right (fun (l,e) acc -> acc ^ ""^(*showLTL l ^ " ==> "^*)(showEffect e) ^";.\n") (producte)  "" in 
+    let result = List.fold_right (fun (l,e) acc -> 
+      let temp = List.fold_left (fun acc a -> acc ^"\n"^ string_of_es a) "" e in 
+      acc ^ ""^showLTL l ^ " ==> "^temp^";.\n") 
+      (producte)  "" in 
     
     print_string (result^"\n");
     
     
-    
-    flush stdout;                (* 现在写入默认设备 *)
     close_in ic                  (* 关闭输入通道 *) 
 
   with e ->                      (* 一些不可预见的异常发生 *)

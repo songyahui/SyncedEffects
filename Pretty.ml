@@ -137,5 +137,18 @@ let rec string_of_es (es:es) :string =
 
   ;;
 
+  
+let rec showLTL (ltl:ltl):string =
+  match ltl with 
+    Lable str -> str
+  | Next l -> "(" ^"X" ^showLTL l ^")"
+  | Until (l1, l2) -> "(" ^showLTL l1 ^ " U " ^showLTL l2 ^")"
+  | Global l -> "(" ^"[] " ^showLTL l ^")"
+  | Future l -> "(" ^"<> " ^showLTL l ^")"
+  | NotLTL l -> "(" ^"! " ^showLTL l ^")"
+  | Imply (l1, l2) -> "(" ^showLTL l1 ^ " -> " ^showLTL l2 ^")"
+  | AndLTL (l1, l2) -> "(" ^showLTL l1 ^ " && " ^showLTL l2 ^")"
+  | OrLTL (l1, l2) -> "(" ^showLTL l1 ^ " || " ^showLTL l2 ^")"
+  ;;
 
 

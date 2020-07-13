@@ -9,6 +9,7 @@
 %token EOF ENTIL EMPTY UNDERLINE DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE OMEGA
 
 %left CONCAT
+%token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR
 
 
 
@@ -29,9 +30,10 @@
 
 
 
-%start prog  ee
+%start prog  ee ltl_p
 %type <Ast.prog> prog
 %type <(Ast.inclusion) list > ee
+%type <(Ast.ltl) list > ltl_p
 
 
 %%
@@ -40,7 +42,21 @@ ee:
 | EOF {[]}
 | a = entailment SIMI r = ee { append [a] r }
 
+ltl_p: 
+| EOF {[]}
+| a = ltl SIMI r = ltl_p { append [a] r }
 
+ltl : 
+| s = VAR {Lable s} 
+| LPAR r = ltl RPAR { r }
+| NEXT p = ltl  {Next p}
+| LPAR p1= ltl UNTIL p2= ltl RPAR {Until (p1, p2)}
+| GLOBAL p = ltl {Global p}
+| FUTURE p = ltl {Future p}
+| LTLNOT p = ltl {NotLTL p}
+| LPAR p1= ltl IMPLY p2= ltl RPAR {Imply (p1, p2)}
+| LPAR p1= ltl LILAND p2= ltl RPAR {AndLTL (p1, p2)}  
+| LPAR p1= ltl LILOR p2= ltl RPAR {OrLTL (p1, p2)}  
 
 singleVAR: var = VAR {[var]}
 

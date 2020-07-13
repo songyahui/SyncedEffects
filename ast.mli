@@ -5,6 +5,7 @@ type name = string
 type state = One | Zero
 type mapping = (var * state) 
 
+
 (*signal set*)
 type instance = mapping list * mapping list 
            (*前面的是constrain,  后面的是signal assignment*)
@@ -33,54 +34,6 @@ type postcondition  = trace list
 type inclusion = INC of es list * es list;;
 
 
-(*
-let name_ (lhs: es) (rhs : es list ) : bool = 
-
-
-        ;;
-
-let inclusion (lhs: es list) (rhs : es list ) : bool = 
-        let es_1 = forall es from lhs
-        name_ es_1 rhs = true 
-
-        ;;
-
-*)
-
-        (*
-  yes:      A |- C /\ B |- C
-        --------------------
-         A \/ B |- C
-
-yes:     A |- C /\ A |- B
-        --------------------
-         A  |- C /\  B
-
-
-  no:
-
-        [A] |- [C]  \/ [A] |- [B]
-        --------------------
-         [A]  |- [C, B]
-
-         a > 0 |- a = 1 \/ a > 0 |- a > 1   -> false 
-         -----------------
-         a >0 |- a = 1 \/ a > 1     -> true 
-
-
-
-        a = 1 |- a > 0  /\ a=2 |- a > 0 
-        ----------------
-        a = 1 \/ a= 2 |- a >0 
-
-        a = 1 |\- a > 1  /!\ a=2 |- a > 1
-        ----------------
-        a = 1 \/ a= 2 |- a >1
-        
-        
-        *)
-
-
 type prog = Nothing 
           | Pause 
           | Seq of prog * prog 
@@ -91,3 +44,14 @@ type prog = Nothing
           | Present of var * prog * prog
           | Trap of name * prog
           | Exit of name * int
+
+
+type ltl = Lable of string 
+        | Next of ltl
+        | Until of ltl * ltl
+        | Global of ltl
+        | Future of ltl
+        | NotLTL of ltl
+        | Imply of ltl * ltl
+        | AndLTL of ltl * ltl
+        | OrLTL of ltl * ltl
