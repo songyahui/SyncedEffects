@@ -7,9 +7,7 @@ open Lexer
 open Pretty
 open Sys
 
-type inclusion =
-  INC of es list * es list
-;;
+
 
 let rec nullable_single (i:es) : bool =
   match i with
@@ -193,15 +191,61 @@ let rec check_containment (lhs:es list) (rhs:es list) =
   (get_bool result,  (Node((translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)), [get_tree (result)])))
 ;;
 
-let a = Any;;
+let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([], [("A", Zero); ("B", Zero); ("C", One)]) and c = Instance([], [("A", One); ("B", Zero); ("C", Zero)]) and d = Instance([], [("D", One); ("B", Zero); ("C", Zero)]);;
 
-let b = Any;;
 
 let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
 
+let printReportHelper lhs rhs : (bool * binary_tree ) = 
 
+  check_containment lhs rhs 
+  ;;
+
+let printReport lhs rhs :string =
+  let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) and i = INC(lhs, rhs) in
+
+  let startTimeStamp = Sys.time() in
+  let (re, tree) =  printReportHelper lhs rhs in
+  let verification_time = "[Verification Time: " ^ string_of_float (Sys.time() -. startTimeStamp) ^ " s]\n" in
+  let result = printTree ~line_prefix:"* " ~get_name ~get_children tree in
+  let buffur = ( "===================================="^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
+  in buffur
+  ;;
+
+(*
 let main = 
-  let (re, temp) = check_containment lhs rhs in 
+  let (re, temp) = in 
   let tree = printTree ~line_prefix:"* " ~get_name ~get_children temp in 
 
   print_string (tree);
+  *)
+
+let rec input_lines file =
+  match try [input_line file] with End_of_file -> [] with
+   [] -> []
+  | [line] -> (String.trim line) :: input_lines file
+  | _ -> failwith "Weird input_line return value"
+
+let () = 
+  let inputfile = (Sys.getcwd () ^ "/" ^ Sys.argv.(1)) in 
+  let ic = open_in inputfile in
+  try 
+    let lines =  (input_lines ic ) in  
+    let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (lines) "" in 
+    let eeList = Parser.ee Lexer.token (Lexing.from_string line) in
+    let result = List.map (fun parm ->  
+                            match parm with 
+                              INC (lhs, rhs) -> printReport lhs rhs ) eeList in 
+    let final_result = List.fold_right (fun x acc -> acc  ^ x ^ "\n") ( result) "" in 
+    print_string ( (final_result) ^"\n");
+    (*
+    print_string final_result;
+    *)
+    flush stdout;                (* 现在写入默认设备 *)
+    close_in ic                  (* 关闭输入通道 *) 
+
+  with e ->                      (* 一些不可预见的异常发生 *)
+    close_in_noerr ic;           (* 紧急关闭 *)
+    raise e                      (* 以出错的形式退出: 文件已关闭,但通道没有写入东西 *)
+
+ ;;

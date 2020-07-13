@@ -38,15 +38,27 @@ rule token = parse
 | "present" {PRESENT}
 | "trap" {TRAP}
 | "exit" {EXIT}
+| "emp" { EMPTY }
 | '(' { LPAR }
 | ')' { RPAR }
 | ';' { SIMI }
 | int      { INTE (int_of_string (Lexing.lexeme lexbuf)) }
-
+| '.' { CONCAT }
 | "||" { PAR }
 | id as str { VAR str }
+| "|-" {ENTIL}
+| "\\/" {DISJ}
+| '_' {UNDERLINE}
+| '[' { LBrackets }
+| ']' { RBrackets }
+| ',' { COMMA }
+| eof { EOF }
+| '^' { POWER }
+| 'w' { OMEGA }
+| '*' {KLEENE}
 
-(*| "|-" {ENTIL}
+(*
+
 | "TRUE" { TRUE }
 | "FALSE" { FALSE }
 | "if" {IF}
@@ -62,12 +74,11 @@ rule token = parse
 | '>' {GT}
 | '<' {LT}
 | '=' {EQ}
-| '^' { POWER }
-| 'w' { OMEGA }
+
 | '|' { CHOICE }
-| '.' { CONCAT }
+
 | '"' { read_string (Buffer.create 17) lexbuf }
-| ',' { COMMA }
+
 | '[' { LBrackets }
 | ']' { RBrackets }
 | '{' { LBRACK  }
@@ -77,17 +88,17 @@ rule token = parse
 | '+' { PLUS }
 | '-' { MINUS }
 | '#' { SHARP }
-| '_' {UNDERLINE}
-| '*' {KLEENE}
+
+
 | '~' {NEGATION}
 | "/*" {LSPEC}
 | "*/" {RSPEC}
-| "\\/" {DISJ}
+
 | "/\\" {CONJ}
 | "==" {EQEQ}
 | ">=" {GTEQ}
 | "<=" {LTEQ}
-| eof { EOF }
+
 *)
 | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
 

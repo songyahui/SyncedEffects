@@ -17,6 +17,7 @@ type es = Bot
         | Kleene of es
         | Any
         | Omega of es
+        | Ntimed of es * int
 
 type history = es 
 
@@ -28,6 +29,8 @@ type precondition = var list * (history * current)
 
 
 type postcondition  = trace list 
+
+type inclusion = INC of es list * es list;;
 
 
 (*
