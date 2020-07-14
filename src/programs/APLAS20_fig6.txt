@@ -1,0 +1,7 @@
+(signal S2 (signal S1 
+
+
+(signal S
+(present S emit S1 emit S2))
+
+))
