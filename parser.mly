@@ -8,7 +8,7 @@
 
 %token EOF ENTIL EMPTY UNDERLINE DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE OMEGA
 
-%left CONCAT
+%left CONCAT DISJ
 %token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR
 
 
@@ -20,7 +20,7 @@
 
 %left CHOICE
 
-%left DISJ
+%
 %left CONJ
 %token <string> STRING
 

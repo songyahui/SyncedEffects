@@ -15,6 +15,10 @@ let rec append_history_now (history:es) ((cons, now) : instance) :es =
   | Instance _  ->  Con(history, Instance (cons, now))
   | Con (es1, es2) -> Con (es1, append_history_now es2 (cons, now))
   | Omega esIn -> Con (history , Instance (cons, now))
+  | Any -> Con (Any, Instance (cons, now))
+  | Kleene esIn -> Con (history , Instance (cons, now))
+  | Ntimed (esIn, n) -> Con (history , Instance (cons, now))
+  | Not esIn -> Con (history , Instance (cons, now))
 ;;
 
 let compareState s1 s2 : bool =
@@ -87,9 +91,12 @@ let rec append_es_es (es1) (es2) : es =
         | Instance (con2, ss2) -> Instance (List.append con1 con2, unionTwoList ss1 ss2)
         | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
         | Omega esIn2 -> Con (append_es_es es1 esIn2, es2)
+        |_ -> raise (Foo "append_es_es inside")
         )
   | Con (es11, es12) -> Con (es11, append_es_es es12 es2)
   | Omega esIn1 -> Con (es1 , append_es_es esIn1 es2)
+  |_ -> raise (Foo "append_es_es outside")
+
 
   ;;
 

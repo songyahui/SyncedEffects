@@ -10,41 +10,38 @@ open Printf
 let rec translateLTL (ltl:ltl) : es list =
   match ltl with 
     Lable str -> [Instance ([], [(str, One)]) ]
-  | Next l -> 
-    List.map (fun a -> Con (Any, a)) (translateLTL l)
-    (*
+  | Next l -> List.map (fun a -> Con (Any, a)) (translateLTL l)
+  | Global l -> List.map (fun a -> (Kleene a)) (translateLTL l)
+  | OrLTL (l1, l2) -> 
+    let temp1 =  translateLTL l1 in 
+    let temp2 =  translateLTL l2 in 
+    List.append temp1 temp2
   | Until (l1, l2) -> 
-      let temp1 =  translateLTL l1 in 
-      let temp2 =  translateLTL l2 in 
-      let prefix = Kleene (ess1) in 
-      (*(pi2, Cons (Cons(ess1, Kleene (ess1)) , ess2), varList2)*)
-      Cons (prefix, ess2)
-  | Global l -> 
-      let (piii , ess1, varList') =  translateLTL pi l varList in 
-
-      (piii, Kleene (ess1), varList')
+    let temp1 =  translateLTL l1 in 
+    let temp2 =  translateLTL l2 in 
+    List.flatten (List.map (fun a -> List.map (fun b -> Con (Kleene (a), b) ) temp2) temp1 )
   | Future l -> 
-      let newVar = getAfreeVar varList in 
-      let prefix = Ttimes (Underline, Var newVar) in 
-      let (piii, ess, varList') =  translateLTL pi l (newVar::varList) in 
- 
-      (*(piii, Cons (Kleene(Not ess ), ess), varList')*)
-      (piii, Cons (prefix, ess), varList')
+    let temp =  translateLTL l in 
+    List.map (fun a-> Con(Kleene Any, a)) temp
+  
   | NotLTL l -> 
-      let (piii, ess, varList') =  translateLTL pi l varList in 
-      (piii, Not (ess), varList')
+    let temp =  translateLTL l in 
+    List.map (fun a-> Not a) temp
   | Imply (l1, l2) -> 
-      let (pi1, ess1, varList1) =  translateLTL pi l1 varList in 
-      let (pi2, ess2, varList2) =  translateLTL pi1 l2 varList1 in 
-      (pi2, ESOr ( (Not (ess1)),   ess2), varList2)
+    let temp1 =  translateLTL l1 in 
+    let temp2 =  translateLTL l2 in 
+    List.flatten (List.flatten (List.map (fun a -> List.map (fun b -> List.append [(Not a)] [b] ) temp2) temp1 ))
+
+
+  | _ -> raise (Foo "translateLTL")
+    (*
+  
+
+  
   | AndLTL (l1, l2) -> 
       let (pi1, ess1, varList1) =  translateLTL pi l1 varList in 
       let (pi2, ess2, varList2) =  translateLTL pi1 l2 varList1 in 
       (pi2, ESAnd (ess1, ess2), varList2)
-  | OrLTL (l1, l2) -> 
-      let (pi1, ess1, varList1) =  translateLTL pi l1 varList in 
-      let (pi2, ess2, varList2) =  translateLTL pi1 l2 varList1 in 
-      (pi2, ESOr (ess1, ess2), varList2)
 *)
   ;;
 
@@ -71,7 +68,9 @@ let main =
 
     let result = List.fold_right (fun (l,e) acc -> 
       let temp = List.fold_left (fun acc a -> acc ^"\n"^ string_of_es a) "" e in 
-      acc ^ ""^showLTL l ^ " ==> "^temp^";.\n") 
+        let buffur = ( "===================================="^"\n" ^(showLTL l)^"\n\n[Translated to Effects] ===>\n " ^temp  ^" \n\n") in 
+
+        acc ^  buffur) 
       (producte)  "" in 
     
     print_string (result^"\n");
