@@ -12,6 +12,7 @@ let rec translateLTL (ltl:ltl) : es list =
     Lable str -> [Instance ([], [(str, One)]) ]
   | Next l -> 
     List.map (fun a -> Con (Any, a)) (translateLTL l)
+  | _ -> raise (Foo "translateLTL")
     (*
   | Until (l1, l2) -> 
       let temp1 =  translateLTL l1 in 

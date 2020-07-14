@@ -134,10 +134,13 @@ let rec string_of_es (es:es) :string =
   | Instance ins  -> string_of_instance ins
   | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
   | Omega esIn -> "(" ^ string_of_es esIn ^ ")^w"
+  | Any -> "_"
+  | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
+  | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
 
   ;;
 
-  
+
 let rec showLTL (ltl:ltl):string =
   match ltl with 
     Lable str -> str
