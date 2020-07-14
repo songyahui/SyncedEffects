@@ -18,6 +18,7 @@ let rec append_history_now (history:es) ((cons, now) : instance) :es =
   | Any -> Con (Any, Instance (cons, now))
   | Kleene esIn -> Con (history , Instance (cons, now))
   | Ntimed (esIn, n) -> Con (history , Instance (cons, now))
+  | Not esIn -> Con (history , Instance (cons, now))
 ;;
 
 let compareState s1 s2 : bool =

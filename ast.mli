@@ -19,6 +19,7 @@ type es = Bot
         | Any
         | Omega of es
         | Ntimed of es * int
+        | Not of es
 
 type history = es 
 

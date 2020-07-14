@@ -19,6 +19,7 @@ let rec nullable_single (i:es) : bool =
     |Any -> false
     |Omega(_) -> false
     |Ntimed (_,n) ->if n==0 then true else false
+    |Not esIn -> false 
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -154,10 +155,11 @@ let rec translate (e: es list) : string =
       |Con(a, b) -> translate_single a ^ "." ^ translate_single b
       |Emp -> "Emp"
       |Bot -> "_|_"
-      |Kleene(s) -> "(" ^ translate_single s ^ ")" ^ "*"
+      |Kleene(s) -> "(" ^ translate_single s ^ ")" ^ "^*"
       |Omega(s) -> "(" ^ translate_single s ^ ")" ^ "^w"
       |Any -> "_"
-      | Ntimed (s, n) -> "(" ^ translate_single s ^ ")" ^ "^" ^ string_of_int n
+      |Ntimed (s, n) -> "(" ^ translate_single s ^ ")" ^ "^" ^ string_of_int n
+      |Not s -> "(!" ^ translate_single s ^ ")" 
   in match e with 
     |hd::tl -> if tl = [] then translate_single hd else translate_single hd ^ " + " ^ translate tl
     |[] -> ""

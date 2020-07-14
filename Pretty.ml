@@ -137,7 +137,7 @@ let rec string_of_es (es:es) :string =
   | Any -> "_"
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
   | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
-
+  | Not esIn -> "(!" ^ string_of_es esIn ^ ")"
   ;;
 
 
