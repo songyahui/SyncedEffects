@@ -45,6 +45,8 @@ rule token = parse
 | int      { INTE (int_of_string (Lexing.lexeme lexbuf)) }
 | '.' { CONCAT }
 | "||" { PAR }
+| 'X' {NEXT}
+| 'U' {UNTIL}
 | id as str { VAR str }
 | "|-" {ENTIL}
 | "\\/" {DISJ}
@@ -60,8 +62,7 @@ rule token = parse
 | "[]" {GLOBAL}
 | "->" {IMPLY}
 | '!' {LTLNOT}
-| 'X' {NEXT}
-| 'U' {UNTIL}
+
 | "&&" {LILAND}
 | "||" {LILOR}
 | eof { EOF }
