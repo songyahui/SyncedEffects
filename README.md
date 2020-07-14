@@ -13,8 +13,8 @@ by [Yahui Song](https://www.comp.nus.edu.sg/~yahuis/).
 ### To Compile:
 
 ```
-git clone https://github.com/songyahui/SynedEffects.git
-cd SynedEffects
+git clone https://github.com/songyahui/SyncedEffects.git
+cd SyncedEffects
 chmod 755 clean 
 chmod 755 compile 
 ./compile
