@@ -43,6 +43,12 @@ Program Verification
 ./hip src/programs/fig5.txt
 ```
 
+LTL to Effects Translator
+
+```
+./ltl src/ltl/Traffic_light.ltl 
+```
+
 ### To Clean:
 
 ``` 
