@@ -17,6 +17,7 @@ type es = Bot
         | Kleene of es
         | Any
         | Omega of es
+        | Ntime of es * int
 ;;
 type history = es;;
 type current = mapping list;;
@@ -83,6 +84,16 @@ let printTree ?line_prefix x =
   Buffer.contents buf
 ;;
 
+let expand_ntime (e:es) : es =
+  let rec expand_single (i:es) n : es =
+    if n > 1 then Con(i, expand_single i (n-1))
+    else if n = 1 then i
+    else Emp
+  in match e with
+    |Ntime(a, b) -> expand_single a b
+    |_ -> e
+;;
+
 let rec nullable_single (i:es) : bool =
   match i with
     |Instance(_) -> false
@@ -92,6 +103,7 @@ let rec nullable_single (i:es) : bool =
     |Bot -> false
     |Any -> false
     |Omega(_) -> false
+    |Ntime(a, b) -> nullable_single (expand_ntime i)
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -140,6 +152,7 @@ let rec find_first_element (e:es list) : name list list =
       |Kleene(a) -> find_first_element_single a
       |Omega(a) -> find_first_element_single a
       |Any -> [["_"]]
+      |Ntime(_, _) -> find_first_element_single (expand_ntime i)
       |_ -> []
   in match e with
     |hd::tl -> let rec remove_empty (i:name list list) : name list list = 
@@ -178,6 +191,7 @@ let rec unfold (element:name list) (expr:es list) : es list =
       |Emp -> [Bot]
       |Any -> [Emp]
       |Bot -> [Bot]
+      |Ntime(_, _) -> unfold_single element (expand_ntime e)
       |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
   in match expr with
@@ -200,6 +214,7 @@ let rec normalize (e:es list) : es list =
       |Kleene(s) -> if s = Emp then Emp
         else if s = Bot then Bot
         else i
+      |Ntime(_, _) -> normalize_single (expand_ntime i)
       |_ -> i
   in match e with 
     |hd::tl -> if tl = [Bot] then [normalize_single hd]
