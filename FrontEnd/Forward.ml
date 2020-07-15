@@ -508,10 +508,13 @@ let rec logical_check es :es =
 
 
 let analyse prog : string = 
-  let forward = fowward_inter prog in  
+  let forward = normal_post (fowward_inter prog) in  
   (*let logical_res = logical_check forward in *)
-  let info = "\n================\nForward res = " ^ string_of_postcondition (normal_post forward)  in 
-   (info)
+  let info = "\nForward Result = " ^ string_of_postcondition ( forward)  in 
+  let head = "\n=========================\n" in 
+  if List.length forward == 0 then head ^ "Logical incorrect (null valid assignments)" 
+  else if List.length forward >1 then head ^ "Logical incorrect (multiple valid assignments)\n"  ^ info 
+  else head ^ "Logical correct " ^ info
 
    ;;
 
