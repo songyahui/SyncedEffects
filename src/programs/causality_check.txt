@@ -1,0 +1,10 @@
+(signal SO1 (signal SO2 
+(signal SL1 (signal SL2 (signal SL3
+(
+  (present SL1
+    (present SL2 emit SO1 emit SL3) 
+    (present SL2 emit SO2 emit SL3))
+||
+  (emit SL2;
+  ((present SL3 pause nothing);
+  emit SL1 ))))))))

@@ -50,7 +50,7 @@ let rec oneOfFalse (var, state) ss : bool =
     [] -> false 
   | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
 ;;
-
+(*true return has controdiction, false means no controdiction *)
 let rec checkHasFalse ss : bool = 
   match ss with 
   [] -> false 
@@ -373,9 +373,9 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     ) eff1)
   | Par (p1, p2) ->  
     let eff1 = forward (evn, (history, curr )) p1 toCheck in 
-    (*print_string (string_of_es temp1^"\n");*)
+    (*print_string (string_of_postcondition eff1^"\n");*)
     let eff2 = forward (evn, (history, curr )) p2 toCheck in 
-    (*print_string (string_of_es temp2^"\n");*)
+    (*print_string (string_of_postcondition eff2^"\n");*)
     List.flatten (List.map (fun (his_a, cur_a, k_a) -> 
       List.map (fun (his_b, cur_b, k_b) -> 
         let (temp, kF) = (zip_es_es ( (Con(his_a,  Instance cur_a )), k_a) ((Con (his_b, Instance cur_b )), k_b))in 
@@ -480,6 +480,7 @@ let fowward_inter prog : postcondition =
 let rec logical_check es :es = 
   match es with 
   Con (es1, es2) -> 
+
     let norES1 = logical_check es1 in 
     let norES2 = logical_check es2 in 
     (match (norES1, norES2) with 
@@ -488,33 +489,35 @@ let rec logical_check es :es =
     | (_ , Bot) -> Bot 
     | _ -> Con (norES1, norES2)
     )
-(*| Or (es1, es2) -> 
-  let norES1 = logical_check es1 in 
-  let norES2 = logical_check es2 in 
-  (match (norES1, norES2) with 
-    (Bot, Bot) -> Bot 
-  | (Bot, _) -> norES2
-  | (_, Bot) -> norES1
-  | _ -> Or (norES1, norES2)
-  )
-  *)
 | Instance (con, ss) -> 
   let con1 = deleteRedundent con in 
   let ss1 = deleteRedundent ss in 
-  if checkHasFalse (List.append con1 ss1) then  Bot else (Instance (con1, ss1))
+  let temp =   if checkHasFalse (List.append con1 ss1) then  Bot else (Instance (con1, ss1)) in 
+  temp
+
 | Omega esIn -> Omega (logical_check esIn)
 | _ -> es 
 ;;
 
+let logical_check_post postcondition : es list = 
+  let trmp = List.map (fun (a, b, d) -> logical_check (Con (a, Instance b))) postcondition in  
+
+  List.fold_left (fun acc a -> 
+    match a with 
+      Bot -> acc
+    | _ -> List.append acc [a]) [] trmp
+  ;;
+
 
 let analyse prog : string = 
-  let forward = normal_post (fowward_inter prog) in  
-  (*let logical_res = logical_check forward in *)
-  let info = "\nForward Result = " ^ string_of_postcondition ( forward)  in 
+  let forward:postcondition = normal_post (fowward_inter prog) in  
+  let logical_res :(es list) = logical_check_post forward in
+  let resultList = List.fold_left (fun acc a -> acc ^ (string_of_es a) ^ "\n") "\n" logical_res in 
+  let info = "\nForward Result = " ^ resultList in 
   let head = "\n=========================\n" in 
-  if List.length forward == 0 then head ^ "Logical incorrect (null valid assignments)" 
-  else if List.length forward >1 then head ^ "Logical incorrect (multiple valid assignments)\n"  ^ info 
-  else head ^ "Logical correct " ^ info
+  if List.length logical_res == 0 then head ^ "Logical incorrect! (null valid assignments)" 
+  else if List.length logical_res >1 then head ^ "Logical incorrect! (multiple valid assignments)\n"  ^ info 
+  else head ^ "Logical correct! " ^ info
 
    ;;
 
