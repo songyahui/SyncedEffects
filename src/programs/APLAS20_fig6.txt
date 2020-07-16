@@ -1,6 +1,6 @@
-    /*
+/*
     ensure ([S2 ]^*)
-    */
+*/
 
 (signal S2 (signal S1 
 (signal S

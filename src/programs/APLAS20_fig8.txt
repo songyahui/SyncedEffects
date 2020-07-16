@@ -1,3 +1,7 @@
+/*
+    ensure (_^*). ([  B]^w)
+*/
+
 (signal A (signal B (signal C
  (emit A;
  (loop 

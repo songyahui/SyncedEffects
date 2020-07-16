@@ -1,3 +1,7 @@
+/*
+    ensure (_^*) .(( _ . [   C])^w)
+*/
+
 (signal A
 (signal B 
 (signal C
