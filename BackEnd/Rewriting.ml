@@ -197,6 +197,7 @@ let rec evaluate elements memory (lhs:es list) (rhs:es list) : (binary_tree * bo
         let result1 = evaluate tl memory lhs rhs and result2 = evaluate (find_first_element dev_lhs) m dev_lhs dev_rhs in
           (Node("(-[" ^ (iter hd) ^ "])" ^ entailment ^ "   [UNFOLD]", (get_tree result1)::(get_tree result2)::[]), (get_bool result1) && (get_bool result2))
     |[] -> if nullable lhs && not (nullable rhs) then (Node(entailment ^ "   [DISPROVE]", []), false) 
+           else if lhs = [Emp] then (Node(entailment ^ "   [PROVE]", []), true)
            else (Leaf, true) 
 ;;
 
