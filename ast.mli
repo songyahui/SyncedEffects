@@ -56,3 +56,6 @@ type ltl = Lable of string
         | Imply of ltl * ltl
         | AndLTL of ltl * ltl
         | OrLTL of ltl * ltl
+
+
+type spec_prog = es list * prog

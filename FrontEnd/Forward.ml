@@ -5,6 +5,7 @@ open Printf
 open Parser
 open Lexer
 open Pretty
+open Rewriting
 open Sys
 
 
@@ -509,15 +510,18 @@ let logical_check_post postcondition : es list =
   ;;
 
 
-let analyse prog : string = 
+let analyse prog1 : string = 
+  let (spec, prog) = prog1 in 
   let forward:postcondition = normal_post (fowward_inter prog) in  
   let logical_res :(es list) = logical_check_post forward in
   let resultList = List.fold_left (fun acc a -> acc ^ (string_of_es a) ^ "\n") "\n" logical_res in 
   let info = "\nForward Result = " ^ resultList in 
-  let head = "\n=========================\n" in 
+  let head = "<<<<< Logical Correctness Checking >>>>>\n=========================\n" in 
   if List.length logical_res == 0 then head ^ "Logical incorrect! (null valid assignments)" 
   else if List.length logical_res >1 then head ^ "Logical incorrect! (multiple valid assignments)\n"  ^ info 
-  else head ^ "Logical correct! " ^ info
+  else 
+  let verification  = printReport logical_res spec in 
+  head ^ "Logical correct! " ^ info ^"\n <<<<< Temporal Verification >>>>>\n" ^ verification
 
    ;;
 
@@ -530,7 +534,7 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
   try
       let lines =  (input_lines ic ) in
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
-      let prog = Parser.prog Lexer.token (Lexing.from_string line) in
+      let prog = Parser.full_prog Lexer.token (Lexing.from_string line) in
 
       (*print_string (string_of_prog prog^"\n");*)
       print_string ( (analyse prog) ^"\n");

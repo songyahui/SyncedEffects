@@ -9,7 +9,7 @@
 %token EOF ENTIL EMPTY UNDERLINE DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE OMEGA
 
 %left CONCAT DISJ
-%token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR
+%token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR LSPEC RSPEC ENSURE
 
 
 
@@ -30,8 +30,8 @@
 
 
 
-%start prog  ee ltl_p
-%type <Ast.prog> prog
+%start full_prog  ee ltl_p
+%type <Ast.spec_prog> full_prog
 %type <(Ast.inclusion) list > ee
 %type <(Ast.ltl) list > ltl_p
 
@@ -108,4 +108,5 @@ prog:
 | LPAR EXIT mn = VAR d = INTE RPAR {Exit (mn, d)}
 
 
+full_prog: LSPEC ENSURE eL = effect RSPEC p = prog {(eL, p)}
 
