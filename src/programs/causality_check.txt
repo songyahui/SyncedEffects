@@ -1,3 +1,8 @@
+
+/*
+    ensure [ SO1,  SL1, SL2 ]
+*/
+
 (signal SO1 (signal SO2 
 (signal SL1 (signal SL2 (signal SL3
 (

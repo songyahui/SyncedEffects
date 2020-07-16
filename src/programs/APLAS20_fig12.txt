@@ -1,7 +1,4 @@
 
-/*
-    ensure [ SO1,  SL1, SL2 ]
-*/
 
 (signal Souter 
 (signal Sinner 
