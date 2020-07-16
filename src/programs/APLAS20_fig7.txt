@@ -9,19 +9,12 @@
     (pause;
       (emit B;
         emit C
-      )
-    )
-  )
+      )))
   ||
   (emit E;
     (pause;
       (emit F;
         (pause;
           emit G
-        )
-      )
-    )
-  )
-)
-))))
-)))
+        )))))
+)))))))
