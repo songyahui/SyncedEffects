@@ -13,7 +13,7 @@ let expand_ntime (e:es) : es =
     else if n = 1 then i
     else Emp
   in match e with
-    |Ntime(a, b) -> expand_single a b
+    |Ntimed(a, b) -> expand_single a b
     |_ -> e
 ;;
 
@@ -26,7 +26,7 @@ let rec nullable_single (i:es) : bool =
     |Bot -> false
     |Any -> false
     |Omega(_) -> false
-    |Ntime(a, b) -> nullable_single (expand_ntime i)
+    |Ntimed(a, b) -> nullable_single (expand_ntime i)
     |Not esIn -> false 
 ;;
 
@@ -76,7 +76,7 @@ let rec find_first_element (e:es list) : name list list =
       |Kleene(a) -> find_first_element_single a
       |Omega(a) -> find_first_element_single a
       |Any -> [["_"]]
-      |Ntime(_, _) -> find_first_element_single (expand_ntime i)
+      |Ntimed(_, _) -> find_first_element_single (expand_ntime i)
       |_ -> []
   in match e with
     |hd::tl -> let rec remove_empty (i:name list list) : name list list = 
@@ -117,7 +117,7 @@ let rec unfold (element:name list) (expr:es list) : es list =
       |Bot -> [Bot]
       |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
-      |Ntime(_, _) -> unfold_single element (expand_ntime e)
+      |Ntimed(_, _) -> unfold_single element (expand_ntime e)
       |_ -> raise (Foo "unfold unfold_single")
   in match expr with
     |hd::tl -> join_single (unfold_single element hd) (unfold element tl)
@@ -139,7 +139,7 @@ let rec normalize (e:es list) : es list =
       |Kleene(s) -> if s = Emp then Emp
         else if s = Bot then Bot
         else i
-      |Ntime(_, _) -> normalize_single (expand_ntime i)
+      |Ntimed(_, _) -> normalize_single (expand_ntime i)
       |_ -> i
   in match e with 
     |hd::tl -> if tl = [Bot] then [normalize_single hd]
