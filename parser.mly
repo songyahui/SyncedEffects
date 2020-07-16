@@ -108,5 +108,7 @@ prog:
 | LPAR EXIT mn = VAR d = INTE RPAR {Exit (mn, d)}
 
 
-full_prog: LSPEC ENSURE eL = effect RSPEC p = prog {(eL, p)}
+full_prog: 
+| LSPEC ENSURE eL = effect RSPEC p = prog {(eL, p)}
+| p = prog {([], p)}
 

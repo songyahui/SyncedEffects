@@ -520,9 +520,11 @@ let analyse prog1 : string =
   if List.length logical_res == 0 then head ^ "Logical incorrect! (null valid assignments)" 
   else if List.length logical_res >1 then head ^ "Logical incorrect! (multiple valid assignments)\n"  ^ info 
   else 
-  let verification  = printReport logical_res spec in 
-  head ^ "Logical correct! " ^ info ^"\n <<<<< Temporal Verification >>>>>\n" ^ verification
-
+  if (List.length spec > 0 ) then 
+    let verification  = printReport logical_res spec in 
+    head ^ "Logical correct! " ^ info ^"\n <<<<< Temporal Verification >>>>>\n" ^ verification
+  else 
+    head ^ "Logical correct! " ^ info
    ;;
 
 
