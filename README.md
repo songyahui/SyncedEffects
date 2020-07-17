@@ -7,7 +7,7 @@ Esterel is an imperative style language that has found success in many safety-cr
 
 ## Online demo
 
-The easiest way to try the code is to use the [Web UI](http://loris-5.d2.comp.nus.edu.sg/SyncedEffects/index.html?ex=fig25&type=c&options=sess) written
+The easiest way to try the code is to use the [Web UI](http://loris-5.d2.comp.nus.edu.sg/SyncedEffects/verify.html?ex=APLAS20_fig6.170.c&type=c&options=sess&result=APLAS20_fig6.170.c.txt) written
 by [Yahui Song](https://www.comp.nus.edu.sg/~yahuis/).
 
 ### To Compile:
