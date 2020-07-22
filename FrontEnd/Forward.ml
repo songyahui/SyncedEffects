@@ -410,10 +410,10 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
       let last = newCur in 
       let middle = getTail (normalES newHis) in 
 
-      print_string ("first" ^ string_of_instance first^"\n");
+      (*print_string ("first" ^ string_of_instance first^"\n");
       print_string ("last" ^ string_of_instance last^"\n");
       print_string ("middle" ^ string_of_es middle^"\n");
-      
+      *)
       let temp = (
         if k>=2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
