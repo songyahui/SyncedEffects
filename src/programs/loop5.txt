@@ -1,0 +1,14 @@
+(signal A
+(signal B 
+(signal C
+ 
+
+ (loop 
+ pause
+ )
+
+)
+ 
+
+)
+)

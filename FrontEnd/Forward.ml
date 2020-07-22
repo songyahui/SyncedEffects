@@ -337,6 +337,16 @@ let rec containExit (con: mapping list) : bool =
 
   ;;
 
+let rec es_length (es:es) : int = 
+  match es with 
+    Bot -> 0
+  | Emp -> 0
+  | Instance _ -> 1
+  | Con (es1, es2) -> es_length es1 + es_length es2
+  | Any -> 1
+  | Not _ -> 1
+  | _ -> raise (Foo "es_length")
+  ;;
 
 
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcondition =
@@ -400,15 +410,23 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
       let last = newCur in 
       let middle = getTail (normalES newHis) in 
 
-      (*print_string ("first" ^ string_of_instance first^"\n");
+      print_string ("first" ^ string_of_instance first^"\n");
       print_string ("last" ^ string_of_instance last^"\n");
       print_string ("middle" ^ string_of_es middle^"\n");
-      *)
+      
       let temp = (
         if k>=2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
-          (true , true) -> Con (Con (history, Instance curr), Omega ( middle) )
+          (true , true) -> 
+          (*print_string ("I am here\n");
+          print_string ("middle" ^ (string_of_es middle));
+          Con (Con (history, Instance curr), Omega ( middle) )
+                    *)
+          if es_length newHis == 1 
+          then Con (Con (history, Instance curr), Omega (Con (middle, Instance newCur)) )
+          else Con (Con (history, Instance curr), Omega ( middle) )
+
         | (true, false) -> Con (Con (history, Instance curr), Omega (Con (middle, Instance newCur)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (Con (middle, Instance first)))
         | (false, false) -> 

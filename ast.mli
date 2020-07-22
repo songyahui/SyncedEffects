@@ -10,6 +10,8 @@ type mapping = (var * state)
 type instance = mapping list * mapping list 
            (*前面的是constrain,  后面的是signal assignment*)
 
+(*type event  = Instance of instance   | Not of instance *)
+
 
 type es = Bot 
         | Emp 
