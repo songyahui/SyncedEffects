@@ -1,0 +1,25 @@
+(signal O1 (signal O2
+
+
+(
+  (present O1 emit O1  nothing )
+    
+     ||
+  (present O1 (
+  present O2 nothing emit O2
+   )
+   nothing)
+
+)
+
+)
+
+)
+
+present SL2
+    then present SL1
+              then emit S01
+              else emit SL3
+    else present SL1 
+              then emit S02
+              else emit SL3 
