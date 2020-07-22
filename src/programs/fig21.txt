@@ -1,6 +1,6 @@
 
  (signal S1 (present S1
-(signal S2 (seq (emit S2)
+(signal S2 ( emit S2;
 (present S2 nothing
-(emit S1))))
+emit S1)))
 nothing ))
