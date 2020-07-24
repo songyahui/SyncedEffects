@@ -1,5 +1,5 @@
 /*
-    ensure (_) .(( _ . [   C])^w)
+    ensure (_) .(( _ . [   D])^w)
 */
 
 (signal A

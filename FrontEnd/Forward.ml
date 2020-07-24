@@ -5,6 +5,7 @@ open Printf
 open Parser
 open Lexer
 open Pretty
+open Rewriting
 open Sys
 
 
@@ -336,6 +337,16 @@ let rec containExit (con: mapping list) : bool =
 
   ;;
 
+let rec es_length (es:es) : int = 
+  match es with 
+    Bot -> 0
+  | Emp -> 0
+  | Instance _ -> 1
+  | Con (es1, es2) -> es_length es1 + es_length es2
+  | Any -> 1
+  | Not _ -> 1
+  | _ -> raise (Foo "es_length")
+  ;;
 
 
 let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcondition =
@@ -407,7 +418,15 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
         if k>=2 then append_es_es (Con (history, Instance curr)) (Con (newHis, Instance newCur)) 
         else 
         (match (allDefalut first, allDefalut last) with 
-          (true , true) -> Con (Con (history, Instance curr), Omega ( middle) )
+          (true , true) -> 
+          (*print_string ("I am here\n");
+          print_string ("middle" ^ (string_of_es middle));
+          Con (Con (history, Instance curr), Omega ( middle) )
+                    *)
+          if es_length newHis == 1 
+          then Con (Con (history, Instance curr), Omega (Con (middle, Instance newCur)) )
+          else Con (Con (history, Instance curr), Omega ( middle) )
+
         | (true, false) -> Con (Con (history, Instance curr), Omega (Con (middle, Instance newCur)))
         | (false, true) -> Con (append_es_es (Con (history, Instance curr)) (Instance first), Omega (Con (middle, Instance first)))
         | (false, false) -> 
@@ -509,16 +528,21 @@ let logical_check_post postcondition : es list =
   ;;
 
 
-let analyse prog : string = 
+let analyse prog1 : string = 
+  let (spec, prog) = prog1 in 
   let forward:postcondition = normal_post (fowward_inter prog) in  
   let logical_res :(es list) = logical_check_post forward in
   let resultList = List.fold_left (fun acc a -> acc ^ (string_of_es a) ^ "\n") "\n" logical_res in 
   let info = "\nForward Result = " ^ resultList in 
-  let head = "\n=========================\n" in 
+  let head = "<<<<< Logical Correctness Checking >>>>>\n=========================\n" in 
   if List.length logical_res == 0 then head ^ "Logical incorrect! (null valid assignments)" 
   else if List.length logical_res >1 then head ^ "Logical incorrect! (multiple valid assignments)\n"  ^ info 
-  else head ^ "Logical correct! " ^ info
-
+  else 
+  if (List.length spec > 0 ) then 
+    let verification  = printReport logical_res spec in 
+    head ^ "Logical correct! " ^ info ^"\n <<<<< Temporal Verification >>>>>\n" ^ verification
+  else 
+    head ^ "Logical correct! " ^ info
    ;;
 
 
@@ -530,7 +554,7 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
   try
       let lines =  (input_lines ic ) in
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
-      let prog = Parser.prog Lexer.token (Lexing.from_string line) in
+      let prog = Parser.full_prog Lexer.token (Lexing.from_string line) in
 
       (*print_string (string_of_prog prog^"\n");*)
       print_string ( (analyse prog) ^"\n");

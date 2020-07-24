@@ -39,6 +39,7 @@ rule token = parse
 | "trap" {TRAP}
 | "exit" {EXIT}
 | "emp" { EMPTY }
+| "ensure" {ENSURE}
 | '(' { LPAR }
 | ')' { RPAR }
 | ';' { SIMI }
@@ -65,6 +66,9 @@ rule token = parse
 
 | "&&" {LILAND}
 | "||" {LILOR}
+
+| "/*" {LSPEC}
+| "*/" {RSPEC}
 | eof { EOF }
 
 (*
@@ -74,7 +78,7 @@ rule token = parse
 | "if" {IF}
 | "else" {ELSE}
 | "require" {REQUIRE}
-| "ensure" {ENSURE}
+
 | "include" {INCLUDE}
 | "true" { TRUEE (bool_of_string (Lexing.lexeme lexbuf))}
 | "false" { FALSEE (bool_of_string (Lexing.lexeme lexbuf))}
@@ -101,8 +105,7 @@ rule token = parse
 
 
 | '~' {NEGATION}
-| "/*" {LSPEC}
-| "*/" {RSPEC}
+
 
 | "/\\" {CONJ}
 | "==" {EQEQ}

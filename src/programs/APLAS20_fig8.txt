@@ -1,7 +1,17 @@
-(signal A (signal B (signal C
+/*
+    ensure (_^*). ([  B]^w)
+*/
+
+(signal A 
+(signal B 
+(signal C
+ 
  (emit A;
+
  (loop 
  (emit B;
    (pause;
     emit C
-   )))))))
+
+   ))))
+   )))

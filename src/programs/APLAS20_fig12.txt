@@ -1,7 +1,14 @@
 
+
 (signal Souter 
 (signal Sinner 
 (
-(present Souter nothing nothing);
-(present Sinner emit Souter nothing)
- )))
+(present Souter 
+          nothing 
+          nothing);
+(present Sinner 
+          emit Souter 
+          nothing)
+ )
+ )
+ )

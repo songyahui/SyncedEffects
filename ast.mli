@@ -14,6 +14,9 @@ type fst = Negation of name list
            | Normal of name list
 ;;
 
+(*type event  = Instance of instance   | Not of instance *)
+
+
 type es = Bot 
         | Emp 
         | Instance of instance 
@@ -59,3 +62,6 @@ type ltl = Lable of string
         | Imply of ltl * ltl
         | AndLTL of ltl * ltl
         | OrLTL of ltl * ltl
+
+
+type spec_prog = es list * prog

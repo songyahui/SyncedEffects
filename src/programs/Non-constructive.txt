@@ -1,0 +1,9 @@
+(signal SL1 (signal SL2
+(
+  (present SL1 emit SL2 nothing)
+||
+  ((present SL2 pause nothing);
+    emit SL1)
+)))
+
+
