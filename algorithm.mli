@@ -1,14 +1,26 @@
 #require "core";;
 open Base;;
 open Core;;
+open String;;
+open List;;
+open Printf;;
+open Sys;;
 
-type var = string;;
+type var = string;;  (*name of the signal e.g., A B C*)
 type name = string;;
 
-type state = One | Zero;;
-type mapping = (var * state);;
 
-type instance = mapping list * mapping list;; 
+type state = One | Zero;;
+type mapping = (var * state) ;;
+
+
+(*signal set*)
+type instance = mapping list * mapping list ;;
+           (*前面的是constrain,  后面的是signal assignment*)
+
+type fst = Negation of name list
+           | Normal of name list
+;;
 
 type es = Bot 
         | Emp 
@@ -17,80 +29,60 @@ type es = Bot
         | Kleene of es
         | Any
         | Omega of es
-        | Ntime of es * int
+        | Ntimed of es * int
+        | Not of es
 ;;
-type history = es;;
-type current = mapping list;;
-type trace = history * current;;
-type precondition = var list *  trace;;
+
+type binary_tree = 
+  |Node of string * (binary_tree list)
+  |Leaf
+;;
+
+type history = es ;;
+
+type current = instance;;
+
+type trace = history * current * int ;;
+
+type precondition = var list * (history * current);;
+
 type postcondition  = trace list;;
 
-type inclusion =
-  INC of es list * es list
+type inclusion = INC of es list * es list;;
+
+
+type prog = Nothing 
+          | Pause 
+          | Seq of prog * prog 
+          | Par of prog * prog
+          | Loop of prog
+          | Declear of var * prog
+          | Emit of var
+          | Present of var * prog * prog
+          | Trap of name * prog
+          | Exit of name * int
 ;;
 
-type binary_tree =
-  | Node of string * (binary_tree  list )
-  | Leaf
+type ltl = Lable of string 
+        | Next of ltl
+        | Until of ltl * ltl
+        | Global of ltl
+        | Future of ltl
+        | NotLTL of ltl
+        | Imply of ltl * ltl
+        | AndLTL of ltl * ltl
+        | OrLTL of ltl * ltl
 ;;
 
-let get_name = function
-    | Leaf -> "."
-    | Node (name, li) -> name
-;;
-
-let get_children = function
-    | Leaf -> []
-    | Node (_, li) -> List.filter li ((<>) Leaf)
-;;
-
-let rec iter1 f = function
-  | [] -> ()
-  | [x] ->
-      f true x
-  | x :: tl ->
-      f false x;
-      iter1 f tl
-;;
-
-let to_buffer ?(line_prefix = "") buf x =
-  let rec print_root indent x =
-    bprintf buf "%s\n" (get_name x);
-    let children = get_children x in
-    iter1 (print_child indent) children
-  and print_child indent is_last x =
-    let line =
-      if is_last then
-        "└── "
-      else
-        "├── "
-    in
-    bprintf buf "%s%s" indent line;
-    let extra_indent =
-      if is_last then
-        "    "
-      else
-        "│   "
-    in
-    print_root (indent ^ extra_indent) x
-  in
-  Buffer.add_string buf line_prefix;
-  print_root line_prefix x
-;;
-
-let printTree ?line_prefix x =
-  let buf = Buffer.create 1000 in
-  to_buffer ?line_prefix buf x;
-  Buffer.contents buf
-;;
+exception Foo of string;;
 
 let expand_ntime (e:es) : es =
-  let rec expand_single (i:es) n : es =
+  let rec expand_single (i:es) (n:int) : es =
     if n > 1 then Con(i, expand_single i (n-1))
     else if n = 1 then i
     else Emp
   in match e with
-    |Ntime(a, b) -> expand_single a b
+    |Ntimed(a, b) -> expand_single a b
     |_ -> e
 ;;
 
@@ -103,7 +95,8 @@ let rec nullable_single (i:es) : bool =
     |Bot -> false
     |Any -> false
     |Omega(_) -> false
-    |Ntime(a, b) -> nullable_single (expand_ntime i)
+    |Ntimed(a, b) -> nullable_single (expand_ntime i)
+    |Not(_) -> false 
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -112,8 +105,8 @@ let rec nullable (e:es list) : bool=
     |[] -> false
 ;;
 
-let rec join (list1:name list list) (list2:name list list) : name list list=
-  let rec check_repeated (t:name list) (list: name list list) : bool =
+let rec join (list1:fst list) (list2:fst list) : fst list=
+  let rec check_repeated (t:fst) (list: fst list) : bool =
     match list with
       |hd::tl -> if hd = t then true else check_repeated t tl
       |[] -> false
@@ -143,21 +136,23 @@ let rec rewrite (i:mapping list) : name list=
     |[] -> []
 ;;
 
-let rec find_first_element (e:es list) : name list list =
-  let rec find_first_element_single (i:es) : name list list =
+let rec find_first_element (e:es list) : fst list =
+  let rec find_first_element_single (i:es) : fst list =
     match i with
-      |Instance(a,b) -> [rewrite b]
+      |Instance(a,b) -> [Normal(rewrite b)]
+      |Not(Instance(a, b)) -> if rewrite b = [] then raise (Foo "Not cannot contain an empty instance") else [Negation(rewrite b)]
+      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a, b) -> if nullable_single a then join (find_first_element_single a) (find_first_element_single b)
         else find_first_element_single a
       |Kleene(a) -> find_first_element_single a
       |Omega(a) -> find_first_element_single a
-      |Any -> [["_"]]
-      |Ntime(_, _) -> find_first_element_single (expand_ntime i)
+      |Any -> [Normal(["_"])]
+      |Ntimed(_, _) -> find_first_element_single (expand_ntime i)
       |_ -> []
   in match e with
-    |hd::tl -> let rec remove_empty (i:name list list) : name list list = 
+    |hd::tl -> let rec remove_empty (i:fst list) : fst list = 
       match i with 
-        |hd::tl -> if hd = [] then tl else hd::remove_empty tl
+        |hd::tl -> if hd = Normal([]) then tl else hd::remove_empty tl
         |[] -> [] 
     in remove_empty (join (find_first_element_single hd) (find_first_element tl))
     |[] -> []
@@ -174,26 +169,39 @@ let rec contains (ss1:name list) (ss2:name list) : bool =
     |[] -> true
 ;;
 
-let rec unfold (element:name list) (expr:es list) : es list =
+let rec contains_fst (f:fst) (ss:name list) : bool =
+  match f with
+    |Normal(a) -> contains a ss
+    |Negation(a) -> not (contains a ss)
+;;
+
+let rec unfold (element:fst) (expr:es list) : es list =
   let rec flatten (a:es list) (b:es) : es list =
     match a with
       |hd::tl -> Con(hd, b)::(flatten tl b)
       |[] -> []
-  in let rec unfold_single (element:name list) (e:es) : es list =
+  in let rec unfold_single (element:fst) (e:es) : es list =
     match e with
       |Instance(a, b) -> let result = rewrite b in 
         if result = [] then [Bot]
-        else if element = ["_"] then [Emp]
-        else if contains element (rewrite b) then [Emp] 
+        else if element = Normal(["_"]) then [Emp]
+        else if contains_fst element (rewrite b) then [Emp] 
         else [Bot]
+      |Not(Instance(a, b)) -> let result = rewrite b in
+        if result = [] then raise (Foo "Not cannot contain an empty instance")
+        else if element = Normal(["_"]) then [Bot] 
+        else if not (contains_fst element (rewrite b)) then [Emp]
+        else [Bot]
+      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a,b) -> if nullable_single a then join_single (flatten (unfold_single element a) b) (unfold_single element b)
         else flatten (unfold_single element a) b
       |Emp -> [Bot]
       |Any -> [Emp]
       |Bot -> [Bot]
-      |Ntime(_, _) -> unfold_single element (expand_ntime e)
       |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
+      |Ntimed(_, _) -> unfold_single element (expand_ntime e)
+      |_ -> raise (Foo "unfold unfold_single")
   in match expr with
     |hd::tl -> join_single (unfold_single element hd) (unfold element tl)
     |[] ->[]
@@ -214,7 +222,7 @@ let rec normalize (e:es list) : es list =
       |Kleene(s) -> if s = Emp then Emp
         else if s = Bot then Bot
         else i
-      |Ntime(_, _) -> normalize_single (expand_ntime i)
+      |Ntimed(_, _) -> normalize_single (expand_ntime i)
       |_ -> i
   in match e with 
     |hd::tl -> if tl = [Bot] then [normalize_single hd]
@@ -228,10 +236,16 @@ let rec check_include (i:inclusion) (memory:inclusion list) : bool =
     |[] -> false
 ;;
 
-let rec iter (l: string list) =
+let rec iter (l: name list) =
     match l with
       |hd::tl -> if tl = [] then hd else hd ^ ";" ^ iter tl 
       |[] -> ""
+;;
+
+let print_derivative (f:fst) =
+  match f with
+    |Normal(a) -> "(-[" ^ (iter a) ^ "])"
+    |Negation(a) -> "(-Not[" ^ (iter a) ^ "])"
 ;;
 
 let rec translate (e: es list) : string =
@@ -241,9 +255,11 @@ let rec translate (e: es list) : string =
       |Con(a, b) -> translate_single a ^ "." ^ translate_single b
       |Emp -> "Emp"
       |Bot -> "_|_"
-      |Kleene(s) -> "(" ^ translate_single s ^ ")" ^ "*"
+      |Kleene(s) -> "(" ^ translate_single s ^ ")" ^ "^*"
       |Omega(s) -> "(" ^ translate_single s ^ ")" ^ "^w"
       |Any -> "_"
+      |Ntimed (s, n) -> "(" ^ translate_single s ^ ")" ^ "^" ^ string_of_int n
+      |Not s -> "(!" ^ translate_single s ^ ")" 
   in match e with 
     |hd::tl -> if tl = [] then translate_single hd else translate_single hd ^ " + " ^ translate tl
     |[] -> ""
@@ -259,7 +275,7 @@ let get_bool e =
     |(_, b) -> b
 ;;
 
-let rec evaluate elements memory (lhs:es list) (rhs:es list) : (binary_tree * bool) =
+let rec evaluate (elements:fst list) (memory:inclusion list) (lhs:es list) (rhs:es list) : (binary_tree * bool) =
   let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) and i = INC(lhs, rhs) in
   match elements with
     |hd::tl ->
@@ -268,8 +284,9 @@ let rec evaluate elements memory (lhs:es list) (rhs:es list) : (binary_tree * bo
       else if check_include i memory then (Node(entailment ^ "   [PROVE]", []), true)
       else let m = i::memory and dev_lhs = normalize (unfold hd lhs) and dev_rhs = normalize (unfold hd rhs) in
         let result1 = evaluate tl memory lhs rhs and result2 = evaluate (find_first_element dev_lhs) m dev_lhs dev_rhs in
-          (Node("(-[" ^ (iter hd) ^ "])" ^ entailment ^ "   [UNFOLD]", (get_tree result1)::(get_tree result2)::[]), (get_bool result1) && (get_bool result2))
+          (Node(print_derivative hd ^ entailment ^ "   [UNFOLD]", (get_tree result1)::(get_tree result2)::[]), (get_bool result1) && (get_bool result2))
     |[] -> if nullable lhs && not (nullable rhs) then (Node(entailment ^ "   [DISPROVE]", []), false) 
+           else if lhs = [Emp] then (Node(entailment ^ "   [PROVE]", []), true)
            else (Leaf, true) 
 ;;
 
@@ -277,5 +294,64 @@ let rec check_containment (lhs:es list) (rhs:es list) =
   let l = normalize lhs and r = normalize rhs in 
   let elements = find_first_element l in
   let result = evaluate elements [] l r in
-  (get_bool result, printTree (Node((translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)), [get_tree (result)])))
+  (get_bool result,  (Node((translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)), [get_tree (result)])))
 ;;
+
+let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([], [("A", Zero); ("B", Zero); ("C", One)]) and c = Instance([], [("A", One); ("B", Zero); ("C", Zero)]) and d = Instance([], [("D", One); ("B", Zero); ("C", Zero)]);;
+
+
+let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
+
+let printReportHelper lhs rhs : (bool * binary_tree ) = 
+
+  check_containment lhs rhs 
+  ;;
+
+let printReport lhs rhs :string =
+  let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) (*and i = INC(lhs, rhs)*) in
+
+  let startTimeStamp = Sys.time() in
+  let (re, tree) =  printReportHelper lhs rhs in
+  let verification_time = "[Verification Time: " ^ string_of_float (Sys.time() -. startTimeStamp) ^ " s]\n" in
+  let result = printTree ~line_prefix:"* " ~get_name ~get_children tree in
+  let buffur = ( "===================================="^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
+  in buffur
+  ;;
+
+(*
+let main = 
+  let (re, temp) = in 
+  let tree = printTree ~line_prefix:"* " ~get_name ~get_children temp in 
+
+  print_string (tree);
+  *)
+
+let rec input_lines file =
+  match try [input_line file] with End_of_file -> [] with
+   [] -> []
+  | [line] -> (String.trim line) :: input_lines file
+  | _ -> failwith "Weird input_line return value"
+
+let () = 
+  let inputfile = (Sys.getcwd () ^ "/" ^ Sys.argv.(1)) in 
+  let ic = open_in inputfile in
+  try 
+    let lines =  (input_lines ic ) in  
+    let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (lines) "" in 
+    let eeList = Parser.ee Lexer.token (Lexing.from_string line) in
+    let result = List.map (fun parm ->  
+                            match parm with 
+                              INC (lhs, rhs) -> printReport lhs rhs ) eeList in 
+    let final_result = List.fold_right (fun x acc -> acc  ^ x ^ "\n") ( result) "" in 
+    print_string ( (final_result) ^"\n");
+    (*
+    print_string final_result;
+    *)
+    flush stdout;           
+    close_in ic            
+
+  with e ->                     
+    close_in_noerr ic;           
+    raise e                      
+
+ ;;

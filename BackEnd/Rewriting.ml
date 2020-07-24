@@ -27,7 +27,7 @@ let rec nullable_single (i:es) : bool =
     |Any -> false
     |Omega(_) -> false
     |Ntimed(a, b) -> nullable_single (expand_ntime i)
-    |Not esIn -> false 
+    |Not(_) -> false 
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -36,8 +36,8 @@ let rec nullable (e:es list) : bool=
     |[] -> false
 ;;
 
-let rec join (list1:name list list) (list2:name list list) : name list list=
-  let rec check_repeated (t:name list) (list: name list list) : bool =
+let rec join (list1:fst list) (list2:fst list) : fst list=
+  let rec check_repeated (t:fst) (list: fst list) : bool =
     match list with
       |hd::tl -> if hd = t then true else check_repeated t tl
       |[] -> false
@@ -67,21 +67,23 @@ let rec rewrite (i:mapping list) : name list=
     |[] -> []
 ;;
 
-let rec find_first_element (e:es list) : name list list =
-  let rec find_first_element_single (i:es) : name list list =
+let rec find_first_element (e:es list) : fst list =
+  let rec find_first_element_single (i:es) : fst list =
     match i with
-      |Instance(a,b) -> [rewrite b]
+      |Instance(a,b) -> [Normal(rewrite b)]
+      |Not(Instance(a, b)) -> if rewrite b = [] then raise (Foo "Not cannot contain an empty instance") else [Negation(rewrite b)]
+      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a, b) -> if nullable_single a then join (find_first_element_single a) (find_first_element_single b)
         else find_first_element_single a
       |Kleene(a) -> find_first_element_single a
       |Omega(a) -> find_first_element_single a
-      |Any -> [["_"]]
+      |Any -> [Normal(["_"])]
       |Ntimed(_, _) -> find_first_element_single (expand_ntime i)
       |_ -> []
   in match e with
-    |hd::tl -> let rec remove_empty (i:name list list) : name list list = 
+    |hd::tl -> let rec remove_empty (i:fst list) : fst list = 
       match i with 
-        |hd::tl -> if hd = [] then tl else hd::remove_empty tl
+        |hd::tl -> if hd = Normal([]) then tl else hd::remove_empty tl
         |[] -> [] 
     in remove_empty (join (find_first_element_single hd) (find_first_element tl))
     |[] -> []
@@ -98,18 +100,30 @@ let rec contains (ss1:name list) (ss2:name list) : bool =
     |[] -> true
 ;;
 
-let rec unfold (element:name list) (expr:es list) : es list =
+let rec contains_fst (f:fst) (ss:name list) : bool =
+  match f with
+    |Normal(a) -> contains a ss
+    |Negation(a) -> not (contains a ss)
+;;
+
+let rec unfold (element:fst) (expr:es list) : es list =
   let rec flatten (a:es list) (b:es) : es list =
     match a with
       |hd::tl -> Con(hd, b)::(flatten tl b)
       |[] -> []
-  in let rec unfold_single (element:name list) (e:es) : es list =
+  in let rec unfold_single (element:fst) (e:es) : es list =
     match e with
       |Instance(a, b) -> let result = rewrite b in 
         if result = [] then [Bot]
-        else if element = ["_"] then [Emp]
-        else if contains element (rewrite b) then [Emp] 
+        else if element = Normal(["_"]) then [Emp]
+        else if contains_fst element (rewrite b) then [Emp] 
         else [Bot]
+      |Not(Instance(a, b)) -> let result = rewrite b in
+        if result = [] then raise (Foo "Not cannot contain an empty instance")
+        else if element = Normal(["_"]) then [Bot] 
+        else if not (contains_fst element (rewrite b)) then [Emp]
+        else [Bot]
+      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a,b) -> if nullable_single a then join_single (flatten (unfold_single element a) b) (unfold_single element b)
         else flatten (unfold_single element a) b
       |Emp -> [Bot]
@@ -159,6 +173,12 @@ let rec iter (l: string list) =
       |[] -> ""
 ;;
 
+let print_derivative (f:fst) =
+  match f with
+    |Normal(a) -> "(-[" ^ (iter a) ^ "])"
+    |Negation(a) -> "(-Not[" ^ (iter a) ^ "])"
+;;
+
 let rec translate (e: es list) : string =
   let rec translate_single (i: es) : string =
     match i with
@@ -186,7 +206,7 @@ let get_bool e =
     |(_, b) -> b
 ;;
 
-let rec evaluate elements memory (lhs:es list) (rhs:es list) : (binary_tree * bool) =
+let rec evaluate (elements:fst list) (memory:inclusion list) (lhs:es list) (rhs:es list) : (binary_tree * bool) =
   let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) and i = INC(lhs, rhs) in
   match elements with
     |hd::tl ->
@@ -195,7 +215,7 @@ let rec evaluate elements memory (lhs:es list) (rhs:es list) : (binary_tree * bo
       else if check_include i memory then (Node(entailment ^ "   [PROVE]", []), true)
       else let m = i::memory and dev_lhs = normalize (unfold hd lhs) and dev_rhs = normalize (unfold hd rhs) in
         let result1 = evaluate tl memory lhs rhs and result2 = evaluate (find_first_element dev_lhs) m dev_lhs dev_rhs in
-          (Node("(-[" ^ (iter hd) ^ "])" ^ entailment ^ "   [UNFOLD]", (get_tree result1)::(get_tree result2)::[]), (get_bool result1) && (get_bool result2))
+          (Node(print_derivative hd ^ entailment ^ "   [UNFOLD]", (get_tree result1)::(get_tree result2)::[]), (get_bool result1) && (get_bool result2))
     |[] -> if nullable lhs && not (nullable rhs) then (Node(entailment ^ "   [DISPROVE]", []), false) 
            else if lhs = [Emp] then (Node(entailment ^ "   [PROVE]", []), true)
            else (Leaf, true) 

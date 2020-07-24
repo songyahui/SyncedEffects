@@ -10,6 +10,9 @@ type mapping = (var * state)
 type instance = mapping list * mapping list 
            (*前面的是constrain,  后面的是signal assignment*)
 
+type fst = Negation of name list
+           | Normal of name list
+;;
 
 type es = Bot 
         | Emp 
