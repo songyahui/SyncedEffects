@@ -132,7 +132,6 @@ let rec unfold (element:fst) (expr:es list) : es list =
       |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
       |Ntimed(_, _) -> unfold_single element (expand_ntime e)
-      |_ -> raise (Foo "unfold unfold_single")
   in match expr with
     |hd::tl -> join_single (unfold_single element hd) (unfold element tl)
     |[] ->[]
