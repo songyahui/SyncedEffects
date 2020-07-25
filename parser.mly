@@ -78,6 +78,7 @@ es:
 | LPAR a = es POWER KLEENE RPAR{Kleene a}
 | LPAR r = es POWER OMEGA RPAR{ Omega r }
 | LPAR r = es POWER n = INTE RPAR{ Ntimed (r, n) }
+| LPAR LTLNOT r = es RPAR { Not r }
 
 (*
 | str = EVENT p=parm { Event ( str, p) }
