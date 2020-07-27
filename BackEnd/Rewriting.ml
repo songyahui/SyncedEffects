@@ -175,7 +175,7 @@ let rec iter (l: string list) =
 let print_derivative (f:fst) =
   match f with
     |Normal(a) -> "(-[" ^ (iter a) ^ "])"
-    |Negation(a) -> "(-Not[" ^ (iter a) ^ "])"
+    |Negation(a) -> "(-![" ^ (iter a) ^ "])"
 ;;
 
 let rec translate (e: es list) : string =
