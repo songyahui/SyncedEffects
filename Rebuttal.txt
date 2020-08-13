@@ -17,7 +17,7 @@ Therefore, we believe verifying the logical correctness and temporal properties 
 
 3) As the informal semantics of Esterel are explained in section 2.1 with examples, to repeat the 
 well-established small-step semantics based on states may make it redundant. For that, we refer to the 
-cited prior works "A calculus for Esterel" (POPL2019) and "The constructive semantics of Esterel" (1999). 
+cited prior works [13] (POPL2019) and [7] (1999). 
 The forward verification rules in section 3 are essentially a big-step semantics for Esterel, as our 
 first novelty. And we mentioned in section 6.1: "Our synced effects of Esterel closely follow [7] on 
 semantics for programs with states."
@@ -32,8 +32,11 @@ section 3.1; and (ii) the declared temporal specifications as the postcondition 
 Therefore, we take the above improvements as our second novelty and contribution.  Besides, we provide a 
 translation tool from LTL to out Synced Effects, found in the GitHub page. 
 
-5) Logical correctness requires every signal to have (and only have) one assignment. But constructiveness 
-requires the status of a signal that needs to be determined before it is read. Logical correctness cannot imply constructiveness, therefore similar to the shortage of prior work [13] (POPL2019), our semantics cannot fully detect non-constructive programs either.
+5) Logical correctness requires every signal to have (and only have) one assignment. Constructiveness 
+requires the status of a signal that needs to be determined before it is read. 
+Constructiveness implies Logical correctness, but Logical correctness cannot imply constructiveness.
+Therefore similar to the shortage of prior work [13] (POPL2019), 
+our semantics focus on logical checking, cannot fully detect non-constructive programs either.
 
 git config --global user.name "songyahui"
 git config --global user.email "songyahuiapp@hotmail.com"
