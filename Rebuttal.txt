@@ -34,3 +34,9 @@ translation tool from LTL to out Synced Effects, found in the GitHub page.
 
 5) Logical correctness requires every signal to have (and only have) one assignment. But constructiveness 
 requires the status of a signal that needs to be determined before it is read. Logical correctness cannot imply constructiveness, therefore similar to the shortage of prior work [13] (POPL2019), our semantics cannot fully detect non-constructive programs either.
+
+git config --global user.name "songyahui"
+git config --global user.email "songyahuiapp@hotmail.com"
+
+git config --global user.name "APLAS-20-Sub-14"
+git config --global user.email "songyahuizhuanyong79@gmail.com"
