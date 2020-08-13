@@ -1,8 +1,10 @@
 Thank you for the efforts reviewing this paper. Here is our response for your valuable comments. 
+
 1) The demo page mentioned from the paper was not available since 2nd Aug, due to the electricity 
 shutdown from the school and many difficulties caused by the pandemic.
 To make it up, we present the implementation anonymously on GitHub, offering some execution examples: 
 https://github.com/APLAS-20-Sub-14/SyncedEffects_ForReview. 
+
 2) As mentioned in sections 1 and 6, reasoning about imperative synchronous languages such as Esterel 
 is useful because (i) it is being used in many reactive programs. One of them is the language Hiphop.js 
 (as published in PLDI2020), deploying Esterel, for creating web applications. Basically, synchronous 
@@ -11,28 +13,24 @@ callback hell; Besides, (ii) One of the related topics is functional reactive pr
 such as languages Elm (in 2012) and Hop (in 2006), both for web development. However, functional 
 paradigms are not as widely accepted as the imperative languages by industrial development. 
 Then embedding such imperative synchronous languages into reactive programming seems to be more practical. 
-Therefore, we believe verifying the logical correctness and temporal properties for Esterel is meaningful 
-and can be extended to other areas such as reactive IoT systems.
+Therefore, we believe verifying the logical correctness and temporal properties for Esterel is meaningful and can be extended to other areas such as reactive IoT systems.
+
 3) As the informal semantics of Esterel are explained in section 2.1 with examples, to repeat the 
 well-established small-step semantics based on states may make it redundant. For that, we refer to the 
 cited prior works "A calculus for Esterel" (POPL2019) and "The constructive semantics of Esterel" (1999). 
 The forward verification rules in section 3 are essentially a big-step semantics for Esterel, as our 
 first novelty. And we mentioned in section 6.1: "Our synced effects of Esterel closely follow [7] on 
 semantics for programs with states."
+
 4) Our method to conduct temporal verification is superior to the state-of-the-art, translating LTL 
 specs into Esterel programs and running a refutation procedure on the parallel composition of that 
-translated spec and the program, see related works. To improve it from both expressiveness and automation 
-sides, we introduce Synced Effects and the term rewriting system. 
-As shown in Fig.3, the Synced Effects is an extended regular language, more expressive than LTL, as 
-illustrated on page 13. 
+translated spec and the program, mentioned in related works. To improve it from both expressiveness and automation sides, we introduce Synced Effects and the term rewriting system. 
+As shown in Fig.3, the Synced Effects is an extended regular language, more expressive than LTL, as illustrated on page 13. 
 The T.r.s, defined in section 4, completes the verification workflow shown in Fig.5 by automatically checks 
 the language inclusions between (i) the effects accumulated from the program using the forward rules in 
-section 3.1; and (ii) the declared temporal specifications as the postcondition. Currently, we do not require 
-any precondition.
+section 3.1; and (ii) the declared temporal specifications as the postcondition (Currently, we do not require any precondition).
 Therefore, we take the above improvements as our second novelty and contribution.  Besides, we provide a 
 translation tool from LTL to out Synced Effects, found in the GitHub page. 
-5) Logical correctness requires every signal to have (and only has) one assignment. But constructiveness 
-requires the status of a signal that needs to be determined before it is read. Logical correctness cannot 
-imply constructiveness, therefore similar to the shortage of prior work [13] (POPL2019), our semantics cannot 
-fully detect non-constructive programs either.
 
+5) Logical correctness requires every signal to have (and only have) one assignment. But constructiveness 
+requires the status of a signal that needs to be determined before it is read. Logical correctness cannot imply constructiveness, therefore similar to the shortage of prior work [13] (POPL2019), our semantics cannot fully detect non-constructive programs either.
