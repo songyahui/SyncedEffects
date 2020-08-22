@@ -1,0 +1,10 @@
+example-json> ;
+--- Output: Time({"hours":0,"minutes":0,"seconds":1,"ampm":false})
+example-json> ;
+--- Output:
+example-json> TIN({"hours":4, "minutes":5, "seconds":6, "ampm": true});
+--- Output: Time({"hours":4,"minutes":5,"seconds":6,"ampm":true})
+example-json> ;
+--- Output: Time({"hours":4,"minutes":5,"seconds":7,"ampm":true})
+example-json> ;
+--- Output:

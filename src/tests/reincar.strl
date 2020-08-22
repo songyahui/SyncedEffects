@@ -1,0 +1,13 @@
+module reincar:
+
+output O;
+
+loop
+	signal S in
+	       present S then emit O end;
+	       pause;
+	       emit S;
+	end signal
+end loop
+
+end module

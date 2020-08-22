@@ -1,0 +1,16 @@
+awaitpar> A;
+--- Output:
+awaitpar> ;
+--- Output:
+awaitpar> B;
+--- Output:
+awaitpar> A;
+--- Output: O
+awaitpar> ;
+--- Output:
+awaitpar> ;
+--- Output:
+awaitpar> B;
+--- Output:
+awaitpar> A;
+--- Output:

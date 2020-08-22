@@ -1,0 +1,12 @@
+foo> ;
+first O
+second O
+--- Output: O
+foo> ;
+first O
+second O
+--- Output: O
+foo> ;
+first O
+second O
+--- Output: O
