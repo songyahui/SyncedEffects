@@ -551,9 +551,9 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
   try
       let lines =  (input_lines ic ) in
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
-      let prog = Parser.specProg Lexer.token (Lexing.from_string line) in
+      let prog = Parser.full_prog Lexer.token (Lexing.from_string line) in
 
-      print_string (string_of_spec_prog prog^"\n");
+      print_string (string_of_full_prog prog^"\n");
       (*print_string ( (analyse prog) ^"\n");*)
       
       flush stdout;                (* 现在写入默认设备 *)

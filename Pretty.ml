@@ -107,6 +107,7 @@ let rec string_of_prog (p : prog) : string =
   | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
   | Trap (mn, prog) -> "(trap "  ^ mn ^" " ^ string_of_prog prog ^" )"
   | Exit (mn, d) -> "(exit " ^ mn ^" " ^ string_of_int d^ ")"
+  | Run mn -> "run " ^ mn
   ;;
 
 
@@ -114,7 +115,9 @@ let string_of_spec_prog (inp:spec_prog):string =
   let  (nm, ins, outs, pre, post, p) = inp in 
   string_of_prog p;;
 
-
+let string_of_full_prog (full: spec_prog list):string = 
+  List.fold_left (fun acc (p) -> acc ^ "\n " ^ string_of_spec_prog p) "" full
+;;
 
 let string_of_sl (sl):string = 
   List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> (*"!" ^name*) "")) "" sl

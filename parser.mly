@@ -6,14 +6,16 @@
 %token <int> INTE
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
-%token EOF ENTIL EMPTY DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE
-
-%left CONCAT DISJ
+%token EOF ENTIL EMPTY DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE END IN RUN
+%token THEN ELSE
+%left CONCAT DISJ 
+%right SIMI PAR
 %token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR 
 %token LSPEC RSPEC ENSURE REQUIRE MODULE COLON INPUT OUTPUT
 
 
-%start specProg pRog ee ltl_p
+%start full_prog specProg pRog ee ltl_p
+%type <(Ast.spec_prog) list> full_prog
 %type <Ast.spec_prog> specProg
 %type <Ast.prog> pRog
 %type <(Ast.inclusion) list > ee
@@ -21,6 +23,11 @@
 
 
 %%
+
+full_prog:
+| EOF {[]}
+| a = specProg r = full_prog { append [a] r }
+
 
 ee: 
 | EOF {[]}
@@ -59,44 +66,57 @@ es:
 | LPAR r = es RPAR { r }
 | a = es CONCAT b = es { Con(a, b) } 
 | a = es  DISJ  b=es  {Disj (a, b)}
-| LPAR a = es POWER KLEENE RPAR{Kleene a}
-| LPAR r = es POWER n = INTE RPAR{ Ntimed (r, n) }
+| LPAR a = es RPAR POWER KLEENE {Kleene a}
+| LPAR r = es RPAR POWER n = INTE { Ntimed (r, n) }
 
 
-
-(*
-| str = EVENT p=parm { Event ( str, p) }
-| a = es CHOICE b = es { ESOr(a, b) }
-| a = es CONJ b = es { ESAnd(a, b) }
-| LPAR r = es POWER t = term RPAR { Ttimes(r, t )}
-*)
 
 entailment:
 | lhs = es   ENTIL   rhs = es {INC (lhs, rhs)}
 
-
-pRog:
+pRog_aux:
 | NOTHING { Nothing }
 | PAUSE   { Pause } 
-| LPAR p1 = pRog SIMI p2 = pRog RPAR { Seq (p1, p2)}
-| LPAR  p1 = pRog PAR p2 = pRog RPAR { Par (p1, p2)}
-| LPAR LOOP p = pRog  RPAR { Loop p}
-| LPAR SIGNAL s = VAR p = pRog RPAR { Declear (s, p)}
 | EMIT s = VAR  {Emit s}
-| LPAR PRESENT s = VAR p1 = pRog p2 = pRog RPAR { Present (s, p1, p2)}
-| LPAR TRAP mn = VAR p1 = pRog RPAR {Trap (mn, p1)}
-| LPAR EXIT mn = VAR d = INTE RPAR {Exit (mn, d)}
+| LOOP p = pRog END  LOOP { Loop p}
+| SIGNAL s = VAR IN p = pRog END SIGNAL { Declear (s, p)}
+| PRESENT s = VAR THEN p1 = pRog ELSE p2 = pRog END PRESENT { Present (s, p1, p2)}
+| TRAP mn = VAR p1 = pRog  {Trap (mn, p1)}
+| EXIT mn = VAR d = INTE  {Exit (mn, d)}
+| RUN mn = VAR {Run mn}
 
+pRog:
+| p =pRog_aux {p}
+| p1 = pRog_aux SIMI p2 = pRog{ Seq (p1, p2)}
+| p1 = pRog_aux PAR p2 = pRog { Par (p1, p2)}
+
+(*
+
+*)
 
 specProg: 
 | MODULE nm = VAR COLON 
   INPUT ins = existVar SIMI
   OUTPUT outs = existVar SIMI
   LSPEC REQUIRE pre = es ENSURE post = es RSPEC p = pRog 
+  END MODULE
   {(nm, ins, outs, pre, post, p)}
+| MODULE nm = VAR COLON 
+  OUTPUT outs = existVar SIMI
+  LSPEC REQUIRE pre = es ENSURE post = es RSPEC p = pRog 
+  END MODULE
+  {(nm, [], outs, pre, post, p)}
+
 | MODULE nm = VAR COLON 
   INPUT ins = existVar SIMI
   OUTPUT outs = existVar SIMI
-   p = pRog 
+  p = pRog 
+  END MODULE
   {(nm, ins, outs, Emp, Emp, p)}
+
+| MODULE nm = VAR COLON 
+  OUTPUT outs = existVar SIMI
+  p = pRog 
+  END MODULE
+  {(nm, [], outs, Emp, Emp, p)}
 
