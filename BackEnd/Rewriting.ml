@@ -7,6 +7,7 @@ open Lexer
 open Pretty
 open Sys
 
+(*
 let expand_ntime (e:es) : es =
   let rec expand_single (i:es) n : es =
     if n > 1 then Con(i, expand_single i (n-1))
@@ -24,10 +25,8 @@ let rec nullable_single (i:es) : bool =
     |Con(a, b) -> nullable_single a && nullable_single b
     |Kleene(_) -> true
     |Bot -> false
-    |Any -> false
-    |Omega(_) -> false
     |Ntimed(a, b) -> nullable_single (expand_ntime i)
-    |Not(_) -> false 
+    |Disj (es1, es2) -> nullable_single es1 || nullable_single es2
 ;;
 
 let rec nullable (e:es list) : bool=
@@ -71,13 +70,9 @@ let rec find_first_element (e:es list) : fst list =
   let rec find_first_element_single (i:es) : fst list =
     match i with
       |Instance(a,b) -> [Normal(rewrite b)]
-      |Not(Instance(a, b)) -> if rewrite b = [] then raise (Foo "Not cannot contain an empty instance") else [Negation(rewrite b)]
-      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a, b) -> if nullable_single a then join (find_first_element_single a) (find_first_element_single b)
         else find_first_element_single a
       |Kleene(a) -> find_first_element_single a
-      |Omega(a) -> find_first_element_single a
-      |Any -> [Normal(["_"])]
       |Ntimed(_, _) -> find_first_element_single (expand_ntime i)
       |_ -> []
   in match e with
@@ -118,18 +113,10 @@ let rec unfold (element:fst) (expr:es list) : es list =
         else if element = Normal(["_"]) then [Emp]
         else if contains_fst element (rewrite b) then [Emp] 
         else [Bot]
-      |Not(Instance(a, b)) -> let result = rewrite b in
-        if result = [] then raise (Foo "Not cannot contain an empty instance")
-        else if element = Normal(["_"]) then [Bot] 
-        else if not (contains_fst element (rewrite b)) then [Emp]
-        else [Bot]
-      |Not(_) -> raise (Foo "Not can only contain an instance")
       |Con(a,b) -> if nullable_single a then join_single (flatten (unfold_single element a) b) (unfold_single element b)
         else flatten (unfold_single element a) b
       |Emp -> [Bot]
-      |Any -> [Emp]
       |Bot -> [Bot]
-      |Omega(s) -> flatten (unfold_single element s) e
       |Kleene(s) -> flatten (unfold_single element s) e
       |Ntimed(_, _) -> unfold_single element (expand_ntime e)
   in match expr with
@@ -140,15 +127,13 @@ let rec unfold (element:fst) (expr:es list) : es list =
 let rec normalize (e:es list) : es list =
   let rec normalize_single (i:es) : es =
     match i with
-      |Con(a, b) -> let is_Omega s = match s with | Omega(_) -> true | _ -> false in
+      |Con(a, b) -> let is_Omega s = match s with 
+      | _ -> false in
         if a = Emp || normalize_single a = Emp then normalize_single b
         else if b = Emp || normalize_single b = Emp then normalize_single a
         else if a = Bot || normalize_single a = Bot || b = Bot || normalize_single b = Bot then Bot
         else if is_Omega a then normalize_single a
         else Con(normalize_single a, normalize_single b)
-      |Omega(s) -> if s = Emp then Emp
-        else if s = Bot then Bot
-        else i 
       |Kleene(s) -> if s = Emp then Emp
         else if s = Bot then Bot
         else i
@@ -186,10 +171,7 @@ let rec translate (e: es list) : string =
       |Emp -> "Emp"
       |Bot -> "_|_"
       |Kleene(s) -> "(" ^ translate_single s ^ ")" ^ "^*"
-      |Omega(s) -> "(" ^ translate_single s ^ ")" ^ "^w"
-      |Any -> "_"
       |Ntimed (s, n) -> "(" ^ translate_single s ^ ")" ^ "^" ^ string_of_int n
-      |Not s -> "(!" ^ translate_single s ^ ")" 
   in match e with 
     |hd::tl -> if tl = [] then translate_single hd else translate_single hd ^ " + " ^ translate tl
     |[] -> ""
@@ -231,13 +213,15 @@ let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([],
 
 
 let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
-
+*)
 let printReportHelper lhs rhs : (bool * binary_tree ) = 
-
-  check_containment lhs rhs 
+  (true, Leaf)
+  (*check_containment lhs rhs *)
   ;;
 
-let printReport lhs rhs :string =
+let printReport (lhs:es) (rhs:es) :string =
+  "printReport" 
+  (*
   let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) (*and i = INC(lhs, rhs)*) in
 
   let startTimeStamp = Sys.time() in
@@ -246,6 +230,7 @@ let printReport lhs rhs :string =
   let result = printTree ~line_prefix:"* " ~get_name ~get_children tree in
   let buffur = ( "===================================="^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
   in buffur
+  *)
   ;;
 
 (*

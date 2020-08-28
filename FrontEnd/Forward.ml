@@ -8,18 +8,15 @@ open Pretty
 open Rewriting
 open Sys
 
-
+(*
 let rec append_history_now (history:es) ((cons, now) : instance) :es = 
   match history with 
     Bot -> Bot
   | Emp -> Instance (cons, now) 
   | Instance _  ->  Con(history, Instance (cons, now))
   | Con (es1, es2) -> Con (es1, append_history_now es2 (cons, now))
-  | Omega esIn -> Con (history , Instance (cons, now))
-  | Any -> Con (Any, Instance (cons, now))
   | Kleene esIn -> Con (history , Instance (cons, now))
   | Ntimed (esIn, n) -> Con (history , Instance (cons, now))
-  | Not esIn -> Con (history , Instance (cons, now))
 ;;
 
 let compareState s1 s2 : bool =
@@ -544,7 +541,7 @@ let analyse prog1 : string =
   else 
     head ^ "Logical correct! " ^ info
    ;;
-
+*)
 
 let () =
   let inputfile = (Sys.getcwd () ^ "/" ^ Sys.argv.(1)) in
@@ -554,10 +551,10 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
   try
       let lines =  (input_lines ic ) in
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
-      let prog = Parser.full_prog Lexer.token (Lexing.from_string line) in
+      let prog = Parser.specProg Lexer.token (Lexing.from_string line) in
 
-      (*print_string (string_of_prog prog^"\n");*)
-      print_string ( (analyse prog) ^"\n");
+      print_string (string_of_spec_prog prog^"\n");
+      (*print_string ( (analyse prog) ^"\n");*)
       
       flush stdout;                (* 现在写入默认设备 *)
       close_in ic                  (* 关闭输入通道 *)

@@ -39,7 +39,11 @@ rule token = parse
 | "trap" {TRAP}
 | "exit" {EXIT}
 | "emp" { EMPTY }
+| "require" {REQUIRE}
 | "ensure" {ENSURE}
+| "module" {MODULE}
+| "input" {INPUT}
+| "output" {OUTPUT}
 | '(' { LPAR }
 | ')' { RPAR }
 | ';' { SIMI }
@@ -51,13 +55,11 @@ rule token = parse
 | id as str { VAR str }
 | "|-" {ENTIL}
 | "\\/" {DISJ}
-| '_' {UNDERLINE}
 | '[' { LBrackets }
 | ']' { RBrackets }
 | ',' { COMMA }
-
+| ':' { COLON }
 | '^' { POWER }
-| 'w' { OMEGA }
 | '*' {KLEENE}
 | "<>" {FUTURE}  
 | "[]" {GLOBAL}
@@ -67,8 +69,8 @@ rule token = parse
 | "&&" {LILAND}
 | "||" {LILOR}
 
-| "/*" {LSPEC}
-| "*/" {RSPEC}
+| "/*@" {LSPEC}
+| "@*/" {RSPEC}
 | eof { EOF }
 
 (*
@@ -77,7 +79,7 @@ rule token = parse
 | "FALSE" { FALSE }
 | "if" {IF}
 | "else" {ELSE}
-| "require" {REQUIRE}
+
 
 | "include" {INCLUDE}
 | "true" { TRUEE (bool_of_string (Lexing.lexeme lexbuf))}

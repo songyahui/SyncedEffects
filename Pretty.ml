@@ -95,9 +95,6 @@ let rec input_lines file =
   | _ -> failwith "Weird input_line return value"
 ;;
 
-
-
-
 let rec string_of_prog (p : prog) : string =
   match p with
     Nothing -> "nothing"
@@ -111,6 +108,13 @@ let rec string_of_prog (p : prog) : string =
   | Trap (mn, prog) -> "(trap "  ^ mn ^" " ^ string_of_prog prog ^" )"
   | Exit (mn, d) -> "(exit " ^ mn ^" " ^ string_of_int d^ ")"
   ;;
+
+
+let string_of_spec_prog (inp:spec_prog):string = 
+  let  (nm, ins, outs, pre, post, p) = inp in 
+  string_of_prog p;;
+
+
 
 let string_of_sl (sl):string = 
   List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> (*"!" ^name*) "")) "" sl
@@ -133,11 +137,9 @@ let rec string_of_es (es:es) :string =
   | Emp -> "emp"
   | Instance ins  -> string_of_instance ins
   | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
-  | Omega esIn -> "(" ^ string_of_es esIn ^ ")^w"
-  | Any -> "_"
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
   | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
-  | Not esIn -> "(!" ^ string_of_es esIn ^ ")"
+  | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
   ;;
 
 

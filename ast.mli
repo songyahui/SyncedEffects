@@ -2,9 +2,8 @@ type var = string  (*name of the signal e.g., A B C*)
 type name = string
 
 
-type state = One | Zero
+type state = One | Zero 
 type mapping = (var * state) 
-
 
 (*signal set*)
 type instance = mapping list * mapping list 
@@ -21,24 +20,17 @@ type es = Bot
         | Emp 
         | Instance of instance 
         | Con of es * es
+        | Disj of es * es
         | Kleene of es
-        | Any
-        | Omega of es
         | Ntimed of es * int
-        | Not of es
 
 type history = es 
 
 type current = instance
 
-type trace = history * current * int 
+type trace = history * current 
 
-type precondition = var list * (history * current) 
-
-
-type postcondition  = trace list 
-
-type inclusion = INC of es list * es list;;
+type inclusion = INC of es * es;;
 
 
 type prog = Nothing 
@@ -64,4 +56,5 @@ type ltl = Lable of string
         | OrLTL of ltl * ltl
 
 
-type spec_prog = es list * prog
+type spec_prog = name * var list * var list * es * es * prog
+            (* name , input, output, precon, postcon, body*)
