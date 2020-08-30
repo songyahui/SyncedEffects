@@ -3,7 +3,7 @@
 
   /*@
   require [OPEN] 
-  ensure [OPEN].[CLOSE] 
+  ensure [].[CLOSE] 
   @*/
 
   pause; 
@@ -22,14 +22,14 @@
   @*/
 
   signal OPEN in 
-
+    loop
       emit OPEN;
       present BTN 
         then run close
         else nothing
       end present;
       pause
-
+    end loop
   end signal
 
   end module
