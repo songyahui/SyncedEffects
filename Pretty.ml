@@ -169,3 +169,8 @@ let string_of_full_prog (full: spec_prog list):string =
 let string_of_inclusion (lhs:es) (rhs:es) :string = 
   string_of_es lhs ^" |- " ^string_of_es rhs 
   ;;
+
+let string_of_state (state :state):string = 
+  match state with 
+  One -> "1"
+  | Zero -> "0";; 

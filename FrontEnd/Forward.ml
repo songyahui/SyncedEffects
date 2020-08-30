@@ -46,25 +46,7 @@ let rec unionTwoList (sl1) (sl2) : mapping list =
   ;;
 
 
-let rec append_es_es (es1) (es2) : es = 
-  match es1 with
-    Bot -> Bot
-  | Emp -> es2
-  | Instance (con1, ss1)  ->  
-        (match es2 with 
-          Bot -> Bot 
-        | Emp -> es1
-        | Instance (con2, ss2) -> Instance (List.append con1 con2, unionTwoList ss1 ss2)
-        | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
-        | Omega esIn2 -> Con (append_es_es es1 esIn2, es2)
-        |_ -> raise (Foo "append_es_es inside")
-        )
-  | Con (es11, es12) -> Con (es11, append_es_es es12 es2)
-  | Omega esIn1 -> Con (es1 , append_es_es esIn1 es2)
-  |_ -> raise (Foo "append_es_es outside")
 
-
-  ;;
 
 
 
@@ -449,23 +431,54 @@ let analyse prog1 : string =
   else 
     head ^ "Logical correct! " ^ info
    ;;
+
+  let rec append_es_es (es1) (es2) : es = 
+  match es1 with
+    Bot -> Bot
+  | Emp -> es2
+  | Instance (con1, ss1)  ->  
+        (match es2 with 
+          Bot -> Bot 
+        | Emp -> es1
+        | Instance (con2, ss2) -> Instance (List.append con1 con2, unionTwoList ss1 ss2)
+        | Con (es21, es22) -> Con (append_es_es es1 es21, es22)
+        | Omega esIn2 -> Con (append_es_es es1 esIn2, es2)
+        |_ -> raise (Foo "append_es_es inside")
+        )
+  | Con (es11, es12) -> Con (es11, append_es_es es12 es2)
+  |_ -> raise (Foo "append_es_es outside")
+
+
+  ;;
 *)
 
-let rec can_fun (s:var) (prog:prog) :bool = 
+
+
+let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool = 
   match prog with 
     Nothing -> false 
   | Pause -> false 
-  | Seq (p1, p2) -> can_fun s p1 || can_fun s p2
-  | Par (p1, p2) -> can_fun s p1 || can_fun s p2
-  | Loop p -> can_fun s p
-  | Declear (v, p) -> can_fun s p 
+  | Seq (p1, p2) -> can_fun s p1 full || can_fun s p2 full
+  | Par (p1, p2) -> can_fun s p1 full || can_fun s p2 full
+  | Loop p -> can_fun s p full
+  | Declear (v, p) -> can_fun s p full
   | Emit str -> if String.compare str s == 0 then true else false 
-  | Present (v, p1, p2) -> can_fun s p1 || can_fun s p2
-  | Trap (mn, p) -> can_fun s p 
+  | Present (v, p1, p2) -> can_fun s p1 full || can_fun s p2 full
+  | Trap (mn, p) -> can_fun s p full
   | Exit _ -> false 
-  | Run proIn -> raise (Foo "can_fun")
+  | Run proIn -> 
+    let rec helper modules = 
+        match modules with 
+          [] -> raise (Foo ("module "^proIn ^"undefined"))
+        | x::xs -> 
+        let (name, _, _, _, _, _) = x in
+        if String.compare name proIn == 0 then x else helper xs 
+      in 
+      let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
+      can_fun s body_calles full
   ;;
 
+  
 let compareState s1 s2 : bool =
   match (s1, s2) with 
     (One, One) -> true 
@@ -531,7 +544,8 @@ let add_Constain ((con, ss):instance) ((name, nowstate)) : instance=
   let (con', ss') = setTrue (con, ss) name in 
   (List.append con' [(name, nowstate)], ss')
   else
-  *) (List.append con [(name, nowstate)], ss)
+  *) 
+  (List.append con [(name, nowstate)], ss)
   ;;
 
 let rec es_To_state (es:es) :prog_states = 
@@ -593,13 +607,25 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
   | Present (s, p1, p2) -> 
   
-    let eff1 = forward evn (List.map (fun (his, cur)-> (his, add_Constain cur (s, One) ) ) current) p1 original full in 
+    let eff1 = forward evn (List.map (fun (his, cur)-> (his, add_Constain (setTrue cur s) (s, One) ) ) current) p1 original full in 
     let eff2 = forward evn (List.map (fun (his, cur)-> (his, add_Constain cur (s, Zero) ) ) current) p2 original full in 
-    if can_fun s original == false then eff2 else 
+    (*if can_fun s original full == false then eff2 else *)
     List.append eff1 eff2
   
+  | Run mn -> 
+      let rec helper modules = 
+        match modules with 
+          [] -> raise (Foo ("module "^mn ^"undefined"))
+        | x::xs -> 
+        let (name, _, _, _, _, _) = x in
+        if String.compare name mn == 0 then x else helper xs 
+      in 
+      let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
+      let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
+      if res == false then raise (Foo ("error when calling "^mn^"\n"))
+      else 
+      List.flatten (List.map (fun (his, curr) -> es_To_state (Con (his, post_callee))) current)
 
-      
     
   | _ -> raise (Foo "not there forward")
   (*

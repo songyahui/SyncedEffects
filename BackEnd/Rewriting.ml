@@ -214,14 +214,17 @@ let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([],
 
 let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
 *)
-let printReport_aux lhs rhs : (bool * binary_tree ) = 
+
+
+
+let check_containment lhs rhs : (bool * binary_tree ) = 
   (true, Leaf)
   (*check_containment lhs rhs *)
   ;;
 
 let printReport (lhs:es) (rhs:es) :string =
-  
-  let (res, tree) = printReport_aux lhs rhs in 
+
+  let (res, tree) = check_containment lhs rhs in 
   printTree ~line_prefix:"* " ~get_name ~get_children tree
   (*
   let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) (*and i = INC(lhs, rhs)*) in
