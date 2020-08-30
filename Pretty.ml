@@ -99,33 +99,26 @@ let rec string_of_prog (p : prog) : string =
   match p with
     Nothing -> "nothing"
   | Pause -> "pause"
-  | Seq (p1, p2) ->  "(seq " ^ string_of_prog p1 ^ " " ^ string_of_prog p2 ^" )"
-  | Par (p1, p2) ->  "(par " ^ string_of_prog p1 ^ " " ^ string_of_prog p2 ^" )"
-  | Loop pIn -> "(loop " ^ string_of_prog pIn ^ ")"
-  | Declear (s, prog) -> "(signal " ^ s ^ " " ^ string_of_prog prog ^" )"
-  | Emit s -> "(emit " ^ s ^ ")"
-  | Present (s, p1, p2) -> "(present " ^ s ^ " " ^ string_of_prog p1 ^" " ^ string_of_prog p2 ^" )"
-  | Trap (mn, prog) -> "(trap "  ^ mn ^" " ^ string_of_prog prog ^" )"
-  | Exit (mn, d) -> "(exit " ^ mn ^" " ^ string_of_int d^ ")"
+  | Seq (p1, p2) ->  string_of_prog p1 ^ ";\n" ^ string_of_prog p2 
+  | Par (p1, p2) ->  "(" ^ string_of_prog p1 ^ "\n||\n (" ^ string_of_prog p2 ^" )"
+  | Loop pIn -> "loop\n " ^ string_of_prog pIn ^ "\nend loop"
+  | Declear (s, prog) -> "signal " ^ s ^ " in \n" ^ string_of_prog prog ^ "\nend signal"
+  | Emit s -> "emit " ^ s 
+  | Present (s, p1, p2) -> "present " ^ s ^ "\nthen " ^ string_of_prog p1 ^"\nelse " ^ string_of_prog p2 ^"\nend present"
+  | Trap (mn, prog) -> "trap "  ^ mn ^" in\n" ^ string_of_prog prog ^" )"^ "\nend trap"
+  | Exit (mn, d) -> "exit " ^ mn ^" " ^ string_of_int d
   | Run mn -> "run " ^ mn
   ;;
 
 
-let string_of_spec_prog (inp:spec_prog):string = 
-  let  (nm, ins, outs, pre, post, p) = inp in 
-  string_of_prog p;;
 
-let string_of_full_prog (full: spec_prog list):string = 
-  List.fold_left (fun acc (p) -> acc ^ "\n " ^ string_of_spec_prog p) "" full
-;;
 
 let string_of_sl (sl):string = 
   List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> (*"!" ^name*) "")) "" sl
 ;;
 
 let string_of_instance ((cons, mapping):instance) :string = 
-  if List.length mapping == 0 then ""
-  else 
+  
   (*let temp = "(" ^ string_of_sl cons ^ ")" in 
   *)
   let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
@@ -159,4 +152,16 @@ let rec showLTL (ltl:ltl):string =
   | OrLTL (l1, l2) -> "(" ^showLTL l1 ^ " || " ^showLTL l2 ^")"
   ;;
 
+let string_of_spec_prog (inp:spec_prog):string = 
+  let  (nm, ins, outs, pre, post, p) = inp in 
+  let body = string_of_prog p in 
+  let spec = "\n/*@\nrequire " ^ string_of_es pre ^"\nensure " ^ string_of_es post ^"\n@*/\n\n" in 
+  
+  let inp = "input " ^ (List.fold_left (fun acc a -> acc ^ " " ^ a) "" ins) ^ ";\n" in 
+  let outp = "output " ^ (List.fold_left (fun acc a -> acc ^ " " ^ a) "" outs) ^ ";\n" in 
+  let whole = "module " ^ nm  ^": \n\n" ^ inp ^ outp ^ spec ^ body ^ "\n\nend module" in 
+  whole ;;
 
+let string_of_full_prog (full: spec_prog list):string = 
+  List.fold_left (fun acc (p) -> acc ^ "\n\n" ^ string_of_spec_prog p) "" full
+;;
