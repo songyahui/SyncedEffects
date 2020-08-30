@@ -132,7 +132,7 @@ let rec string_of_es (es:es) :string =
     Bot -> "_|_"  
   | Emp -> "emp"
   | Instance ins  -> string_of_instance ins
-  | Con (es1, es2) ->  string_of_es es1 ^ " . " ^ string_of_es es2
+  | Con (es1, es2) ->  "("^string_of_es es1 ^ " . " ^ string_of_es es2^")"
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
   | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
   | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
@@ -165,3 +165,7 @@ let string_of_spec_prog (inp:spec_prog):string =
 let string_of_full_prog (full: spec_prog list):string = 
   List.fold_left (fun acc (p) -> acc ^ "\n\n" ^ string_of_spec_prog p) "" full
 ;;
+
+let string_of_inclusion (lhs:es) (rhs:es) :string = 
+  string_of_es lhs ^" |- " ^string_of_es rhs 
+  ;;

@@ -56,6 +56,8 @@ type ltl = Lable of string
         | AndLTL of ltl * ltl
         | OrLTL of ltl * ltl
 
+type prog_states = (es * instance) list
+
 
 type spec_prog = name * var list * var list * es * es * prog
             (* name , input, output, precon, postcon, body*)

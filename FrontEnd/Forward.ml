@@ -19,12 +19,7 @@ let rec append_history_now (history:es) ((cons, now) : instance) :es =
   | Ntimed (esIn, n) -> Con (history , Instance (cons, now))
 ;;
 
-let compareState s1 s2 : bool =
-  match (s1, s2) with 
-    (One, One) -> true 
-  | (Zero, Zero) -> true 
-  | _ -> false 
-  ;;
+
 
 let union (assign : mapping list) :mapping list = 
   let rec oneOfOne all1 v :bool =
@@ -40,33 +35,6 @@ let union (assign : mapping list) :mapping list =
 
   ;;
 
-
-
-
-let rec oneOfFalse (var, state) ss : bool =
-  match ss with 
-    [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
-;;
-(*true return has controdiction, false means no controdiction *)
-let rec checkHasFalse ss : bool = 
-  match ss with 
-  [] -> false 
-| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
-;;
-
-let rec oneOf (var, state) ss : bool =
-  match ss with 
-    [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
-;;
-
-let rec deleteRedundent sl : mapping list = 
-  match sl with 
-    [] -> sl 
-  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
-
-  ;;
 
 let rec unionTwoList (sl1) (sl2) : mapping list = 
   let app = deleteRedundent (List.append sl1 sl2) in 
@@ -121,9 +89,7 @@ let rec disjunES (esList) : es =
   ;;
 *)
 
-let make_nothing (evn: string list) : mapping list = 
-  List.map (fun a -> (a, Zero) ) evn 
-  ;;
+
 
   
 let rec splitESfromLast es: (es * instance) =
@@ -148,35 +114,7 @@ let rec splitESfromLast es: (es * instance) =
 
 
 
-  
-let rec normalES es: es =
-  match es with 
-    Con (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
-  | Con (es1, es2) -> 
-      let norES1 = normalES es1 in 
-      let norES2 = normalES es2 in 
-      (*print_string (string_of_es norES1);*)
-      (match (norES1, norES2) with 
-        (Emp, _) -> norES2 
-      | (_, Emp) -> norES1
-      | (Bot, _) -> Bot 
-      | (_ , Bot) -> Bot 
-      (*
-      | (Con (ess, Omega esIn), _) -> Con (ess, Omega esIn)
-      | (Omega esIn, _) -> Omega esIn
-      *)
-      | _ -> Con (norES1, norES2)
-
-      )
-
-  | Instance (con, ss) -> 
-    let con1 = deleteRedundent con in 
-    let ss1 = deleteRedundent ss in 
-    if checkHasFalse (con1) then  Bot else 
-    (Instance (con1, ss1))
-  | Omega esIn -> Omega (normalES esIn)
-  | _ -> es 
-  ;;
+ 
 
 let normal_post postcondition : postcondition = 
   List.map (fun (a, b, d) -> (normalES a, b, d)) postcondition
@@ -257,37 +195,11 @@ let rec zip_es_es (es_1, k1) (es_2, k2) :(es * int) =
   (normalES (listToES ziplist) , 0)
   ;;
 
-let rec setTrue ((con, ss):instance) (name) : instance= 
-  let rec helper (inn:mapping list ):mapping list  = 
-    (match inn with 
-    [] -> raise  (Foo (name^" is not decleared"))
-  | (x, state)::xs -> 
-    if String.compare x name == 0 then List.append [(x, One)] xs else  List.append [(x, state)] (helper xs)
-    )
-  in (con, helper ss)
-  ;;
 
-let add_Constain ((con, ss):instance) ((name, nowstate)) : instance= 
-  (*if compareState nowstate One then 
-  let (con', ss') = setTrue (con, ss) name in 
-  (List.append con' [(name, nowstate)], ss')
-  else
-  *) (List.append con [(name, nowstate)], ss)
-  ;;
 
-let rec can_fun (s:var) (prog:prog) :bool = 
-  match prog with 
-    Nothing -> false 
-  | Pause -> false 
-  | Seq (p1, p2) -> can_fun s p1 || can_fun s p2
-  | Par (p1, p2) -> can_fun s p1 || can_fun s p2
-  | Loop p -> can_fun s p
-  | Declear (v, p) -> can_fun s p 
-  | Emit str -> if String.compare str s == 0 then true else false 
-  | Present (v, p1, p2) -> can_fun s p1 || can_fun s p2
-  | Trap (mn, p) -> can_fun s p 
-  | Exit _ -> false 
-  ;;
+
+
+
 
 let rec getFirst (es:es) : instance =
   match es with 
@@ -358,11 +270,7 @@ let rec forward (precondition:precondition) (prog:prog) (toCheck:prog) : postcon
     let newCurr = ([], make_nothing evn) in 
     [(normalES newHis, newCurr, 0)]
 
-  | Present (s, p1, p2) -> 
-    let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
-    let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
-    if can_fun s toCheck == false then eff2 else 
-    List.append eff1 eff2
+
 (*    if can_fun s origin == false then temp2 else 
     Or (temp1, temp2)
 *)
@@ -543,6 +451,179 @@ let analyse prog1 : string =
    ;;
 *)
 
+let rec can_fun (s:var) (prog:prog) :bool = 
+  match prog with 
+    Nothing -> false 
+  | Pause -> false 
+  | Seq (p1, p2) -> can_fun s p1 || can_fun s p2
+  | Par (p1, p2) -> can_fun s p1 || can_fun s p2
+  | Loop p -> can_fun s p
+  | Declear (v, p) -> can_fun s p 
+  | Emit str -> if String.compare str s == 0 then true else false 
+  | Present (v, p1, p2) -> can_fun s p1 || can_fun s p2
+  | Trap (mn, p) -> can_fun s p 
+  | Exit _ -> false 
+  | Run proIn -> raise (Foo "can_fun")
+  ;;
+
+let compareState s1 s2 : bool =
+  match (s1, s2) with 
+    (One, One) -> true 
+  | (Zero, Zero) -> true 
+  | _ -> false 
+  ;;
+
+let rec oneOfFalse (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
+;;
+(*true return has controdiction, false means no controdiction *)
+let rec checkHasFalse ss : bool = 
+  match ss with 
+  [] -> false 
+| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
+;;
+
+
+
+let rec oneOf (var, state) ss : bool =
+  match ss with 
+    [] -> false 
+  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
+;;
+
+let rec deleteRedundent sl : mapping list = 
+  match sl with 
+    [] -> sl 
+  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
+
+  ;;
+ 
+let rec normalES es: es =
+  match es with 
+  | Disj (Bot, es1) -> normalES es1
+  | Disj (es1, Bot) -> normalES es1
+  | Disj (es1, es2) -> Disj (normalES es1, normalES es2)
+  | Con (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
+  | Con (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (*print_string (string_of_es norES1);*)
+      (match (norES1, norES2) with 
+        (Emp, _) -> norES2 
+      | (_, Emp) -> norES1
+      | (Bot, _) -> Bot 
+      | (_ , Bot) -> Bot 
+      | _ -> Con (norES1, norES2)
+      )
+
+  | Instance (con, ss) -> 
+    let con1 = deleteRedundent con in 
+    let ss1 = deleteRedundent ss in 
+    if checkHasFalse (con1) then  Bot else 
+    (Instance (con1, ss1))
+  | _ -> es 
+  ;;
+
+let add_Constain ((con, ss):instance) ((name, nowstate)) : instance= 
+  (*if compareState nowstate One then 
+  let (con', ss') = setTrue (con, ss) name in 
+  (List.append con' [(name, nowstate)], ss')
+  else
+  *) (List.append con [(name, nowstate)], ss)
+  ;;
+
+let rec es_To_state (es:es) :prog_states = 
+  match es with 
+  | Instance ins -> [(Emp, ins)]
+  | Con (es1, es2) -> 
+    let his_cur_list = es_To_state es2 in 
+    List.map (fun (his,cur) -> (Con (es1, his),cur)) his_cur_list
+    
+  | Disj (es1, es2) -> List.append (es_To_state es1) (es_To_state es2)
+  | Kleene esIn -> 
+    let his_cur_list = es_To_state esIn in 
+    List.map (fun (his,cur) -> (Con (es, his), cur)) his_cur_list
+  | Ntimed (esIn, n) ->
+    assert (n>1);
+    let his_cur_list = es_To_state esIn in 
+    List.map (fun (his,cur) -> (Con (Ntimed (esIn, n-1), his), cur)) his_cur_list
+
+  | _ -> raise (Foo "there is a EMP OR BOT HERE")
+  ;;
+
+
+let rec state_To_es (state:prog_states):es = 
+  List.fold_left (fun acc (a, b) -> Disj (acc, (Con (a, Instance b)))) Bot state;;
+  
+let rec setTrue ((con, ss):instance) (name) : instance= 
+  let rec helper (inn:mapping list ):mapping list  = 
+    (match inn with 
+    [] -> raise  (Foo (name^" is not decleared"))
+  | (x, state)::xs -> 
+    if String.compare x name == 0 then List.append [(x, One)] xs else  List.append [(x, state)] (helper xs)
+    )
+  in (con, helper ss)
+  ;;
+
+let make_nothing (evn: string list) : mapping list = 
+  List.map (fun a -> (a, Zero) ) evn 
+  ;;
+
+let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
+  match prog with 
+    Nothing -> current
+  | Emit s -> 
+    List.map (fun (his, curr) -> (his, setTrue curr s)) current
+  | Pause -> 
+    let helper (his, curr) = 
+      let newHis = Con (his, Instance curr) in 
+      let newCurr = ([], make_nothing evn) in 
+      (newHis, newCurr)
+    in List.map (helper) current
+  | Seq (p1, p2) ->  
+    let states1 = forward evn current p1 original full in 
+    forward evn states1 p2 original full
+  | Declear (s, progIn ) -> 
+    forward (List.append evn [s]) (List.map (fun (his, (con, curr)) -> (his, (con, List.append curr [(s, Zero)]))) current) progIn original full
+
+
+
+
+  | Present (s, p1, p2) -> 
+  
+    let eff1 = forward evn (List.map (fun (his, cur)-> (his, add_Constain cur (s, One) ) ) current) p1 original full in 
+    let eff2 = forward evn (List.map (fun (his, cur)-> (his, add_Constain cur (s, Zero) ) ) current) p2 original full in 
+    if can_fun s original == false then eff2 else 
+    List.append eff1 eff2
+  
+
+      
+    
+  | _ -> raise (Foo "not there forward")
+  (*
+  
+  
+
+  | Present (s, p1, p2) -> 
+    let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
+    let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
+    if can_fun s toCheck == false then eff2 else 
+    List.append eff1 eff2
+*)
+  ;;
+
+let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
+  let (nm, inp_sig, oup_sig, pre,  post, prog) = spec_prog in 
+  let final_states = forward (append inp_sig oup_sig) (es_To_state pre) prog prog full in 
+  let final_effects = normalES (state_To_es final_states)  in 
+  string_of_inclusion final_effects post ^ "\n" ^
+  printReport final_effects post;;
+
+let forward_verification (progs:spec_prog list):string = 
+  List.fold_left (fun acc a -> acc ^ "\n\n" ^ verifier a progs) "" progs ;; 
+
 let () =
   let inputfile = (Sys.getcwd () ^ "/" ^ Sys.argv.(1)) in
 (*    let outputfile = (Sys.getcwd ()^ "/" ^ Sys.argv.(2)) in
@@ -551,10 +632,10 @@ print_string (inputfile ^ "\n" ^ outputfile^"\n");*)
   try
       let lines =  (input_lines ic ) in
       let line = List.fold_right (fun x acc -> acc ^ "\n" ^ x) (List.rev lines) "" in
-      let prog = Parser.full_prog Lexer.token (Lexing.from_string line) in
+      let progs = Parser.full_prog Lexer.token (Lexing.from_string line) in
 
-      print_string (string_of_full_prog prog^"\n");
-      (*print_string ( (analyse prog) ^"\n");*)
+      (*print_string (string_of_full_prog progs^"\n");*)
+      print_string ( (forward_verification progs) ^"\n");
       
       flush stdout;                (* 现在写入默认设备 *)
       close_in ic                  (* 关闭输入通道 *)
