@@ -5,10 +5,7 @@ type name = string
 type signal = One of var | Zero of var
 
 (*signal set*)
-type instance = signal list 
-           (*前面的是constrain,  后面的是signal assignment*)
-
-;;
+type instance = signal list ;;
 
 (*type event  = Instance of instance   | Not of instance *)
 
@@ -28,7 +25,6 @@ type trace = history * current
 
 type inclusion = INC of es * es;;
 
-
 type prog = Nothing 
           | Pause 
           | Seq of prog * prog 
@@ -41,7 +37,6 @@ type prog = Nothing
           | Exit of name * int
           | Run of name 
 
-
 type ltl = Lable of string 
         | Next of ltl
         | Until of ltl * ltl
@@ -53,7 +48,6 @@ type ltl = Lable of string
         | OrLTL of ltl * ltl
 
 type prog_states = (es * instance) list
-
 
 type spec_prog = name * var list * var list * es * es * prog
             (* name , input, output, precon, postcon, body*)

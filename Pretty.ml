@@ -113,31 +113,12 @@ let rec string_of_prog (p : prog) : string =
 
 
 
-let string_of_sl (sl):string = 
-  List.fold_left (fun acc sig_ -> 
-  acc ^ " " ^ 
-    (match sig_ with 
-      One name -> name 
-    | Zero name -> (*"!" ^name*) "")
-  ) "" sl
-;;
-
-let string_of_instance (mapping:instance) :string = 
-  let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
-  temp1
-  ;;
 
 
-let rec string_of_es (es:es) :string = 
-  match es with 
-    Bot -> "_|_"  
-  | Emp -> "emp"
-  | Instance ins  -> string_of_instance ins
-  | Con (es1, es2) ->  "("^string_of_es es1 ^ " . " ^ string_of_es es2^")"
-  | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
-  | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
-  | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
-  ;;
+
+
+
+
 
 
 let rec showLTL (ltl:ltl):string =
@@ -151,6 +132,39 @@ let rec showLTL (ltl:ltl):string =
   | Imply (l1, l2) -> "(" ^showLTL l1 ^ " -> " ^showLTL l2 ^")"
   | AndLTL (l1, l2) -> "(" ^showLTL l1 ^ " && " ^showLTL l2 ^")"
   | OrLTL (l1, l2) -> "(" ^showLTL l1 ^ " || " ^showLTL l2 ^")"
+  ;;
+
+
+
+
+
+let string_of_state (state :signal):string = 
+  match state with 
+    One name -> name 
+  | Zero name -> "!"^name;; 
+
+
+let string_of_sl (sl):string = 
+  List.fold_left (fun acc sig_ -> 
+  acc ^ " " ^ 
+  string_of_state sig_
+  ) "" sl
+;;
+
+let string_of_instance (mapping:instance) :string = 
+  let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
+  temp1
+  ;;
+
+let rec string_of_es (es:es) :string = 
+  match es with 
+    Bot -> "_|_"  
+  | Emp -> "emp"
+  | Instance ins  -> string_of_instance ins
+  | Con (es1, es2) ->  "("^string_of_es es1 ^ " . " ^ string_of_es es2^")"
+  | Kleene esIn -> "(" ^ string_of_es esIn ^ ")^*" 
+  | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")^" ^ string_of_int n 
+  | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
   ;;
 
 let string_of_spec_prog (inp:spec_prog):string = 
@@ -171,7 +185,8 @@ let string_of_inclusion (lhs:es) (rhs:es) :string =
   string_of_es lhs ^" |- " ^string_of_es rhs 
   ;;
 
-let string_of_state (state :signal):string = 
-  match state with 
-    One name -> name 
-  | Zero name -> "!"^name;; 
+let string_of_trace ((his, cur):trace) :string = 
+  "Trace: (" ^ string_of_es his ^")." ^ string_of_instance cur ^"\n";; 
+
+let string_of_prg_state (t_li : trace list):string = 
+  List.fold_left (fun acc a -> acc ^ string_of_trace a ) "\n" t_li ;;

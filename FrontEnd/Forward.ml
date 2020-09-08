@@ -42,10 +42,17 @@ let compareSignal s1 s2 : bool =
   | _ -> false 
   ;;
 
+let controdict s1 s2 : bool =
+  match (s1, s2) with 
+    (One n1, Zero n2) -> String.compare n1 n2 == 0
+  | (Zero n1 , One n2 ) -> String.compare n1 n2 == 0 
+  | _ -> false 
+  ;;
+
 let rec oneOfFalse (sig_:signal) ss : bool =
   match ss with 
     [] -> false 
-  | head_sig:: xs -> if compareSignal sig_ head_sig == false then true else oneOfFalse sig_ xs
+  | head_sig:: xs -> if controdict sig_ head_sig then true else oneOfFalse sig_ xs
 ;;
 (*true return has controdiction, false means no controdiction *)
 let rec checkHasFalse ss : bool = 
@@ -73,9 +80,15 @@ let rec deleteRedundent sl : signal list =
  
 let rec normalES es: es =
   match es with 
-  | Disj (Bot, es1) -> normalES es1
-  | Disj (es1, Bot) -> normalES es1
-  | Disj (es1, es2) -> Disj (normalES es1, normalES es2)
+  | Disj (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (match (norES1, norES2) with 
+      | (Bot, Bot) -> Bot
+      | (Bot, _) -> norES2
+      | (_, Bot) -> norES1
+      | _ ->Disj (norES1, norES2)
+      )
   | Con (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
   | Con (es1, es2) -> 
       let norES1 = normalES es1 in 
@@ -130,15 +143,6 @@ let rec es_To_state (es:es) :prog_states =
 let rec state_To_es (state:prog_states):es = 
   List.fold_left (fun acc (a, b) -> Disj (acc, (Con (a, Instance b)))) Bot state;;
   
-let rec setTrue (sig_list:instance) (name) : instance= 
-  let rec helper (inn:signal list ):signal list  = 
-    (match inn with 
-    [] -> raise  (Foo (name^" is not decleared"))
-  | sig_head::xs -> 
-    if compareSignal sig_head (One name) == true then List.append [(One name)] xs else  List.append [sig_head] (helper xs)
-    )
-  in helper sig_list
-  ;;
 
 let make_nothing (evn: string list) : signal list = 
   List.map (fun a -> (Zero a) ) evn 
@@ -146,9 +150,12 @@ let make_nothing (evn: string list) : signal list =
 
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
   match prog with 
-    Nothing -> current
+    Nothing -> 
+  
+    List.map (fun (his, curr) -> 
+    (his, List.append (make_nothing evn) curr )) current
   | Emit s -> 
-    List.map (fun (his, curr) -> (his, setTrue curr s)) current
+    List.map (fun (his, curr) -> (his, List.append [(One s)] curr )) current
   | Pause -> 
     let helper (his, curr) = 
       let newHis = Con (his, Instance curr) in 
@@ -159,7 +166,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
     let states1 = forward evn current p1 original full in 
     forward evn states1 p2 original full
   | Declear (s, progIn ) -> 
-    forward (List.append evn [s]) (List.map (fun (his, (curr)) -> (his, (List.append curr [(Zero s)]))) current) progIn original full
+    forward (List.append evn [s]) ( current) progIn original full
 
 
 
@@ -168,7 +175,13 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   
     let eff1 = forward evn (List.map (fun (his, cur)-> (his, List.append [(One s)] cur ) ) current) p1 original full in 
     let eff2 = forward evn (List.map (fun (his, cur)-> (his, List.append [(Zero s)] cur ) ) current) p2 original full in 
-    (*if can_fun s original full == false then eff2 else *)
+    
+    (*
+    print_string(string_of_prg_state eff1);
+
+    print_string(string_of_prg_state eff2);
+    *)
+
     List.append eff1 eff2
   
   | Run mn -> 
@@ -187,22 +200,12 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
     
   | _ -> raise (Foo "not there forward")
-  (*
-  
-  
-
-  | Present (s, p1, p2) -> 
-    let eff1 = forward (evn, (history, add_Constain curr (s, One) )) p1 toCheck in 
-    let eff2 = forward (evn, (history, add_Constain curr (s, Zero) )) p2 toCheck in 
-    if can_fun s toCheck == false then eff2 else 
-    List.append eff1 eff2
-*)
   ;;
 
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
   let (nm, inp_sig, oup_sig, pre,  post, prog) = spec_prog in 
-  let final_states = forward (append inp_sig oup_sig) (es_To_state pre) prog prog full in 
-  let final_effects = normalES (state_To_es final_states)  in 
+  let final_states = forward ((*append inp_sig*) oup_sig) (es_To_state pre) prog prog full in 
+  let final_effects =  normalES (state_To_es final_states)  in 
   string_of_inclusion final_effects post ^ "\n" ^
   printReport final_effects post;;
 
