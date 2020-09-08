@@ -72,7 +72,7 @@ es:
 
 
 entailment:
-| lhs = es   ENTIL   rhs = es {INC (lhs, rhs)}
+| lhs = es   ENTIL   rhs = es { (lhs, rhs)}
 
 pRog_aux:
 | NOTHING { Nothing }

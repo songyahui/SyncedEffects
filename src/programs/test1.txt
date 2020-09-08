@@ -1,9 +1,9 @@
   module close:
-  output CLOSE;
+  output S1;
 
   /*@
   require [] 
-  ensure [].[CLOSE] 
+  ensure [S1] 
   @*/
 
   signal S1 in

@@ -215,11 +215,82 @@ let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([],
 let lhs = [Con(a, Kleene(a)); Con(b, Kleene(a))] and rhs = [Con(Kleene(a), Kleene(b))];;
 *)
 
+let rec nallable (es:es):bool = 
+  match es with 
+    Bot -> false 
+  | Emp -> true
+  | Instance _  -> false 
+  | Con (es1, es2) -> nallable es1 && nallable es2
+  | Disj (es1, es2) -> nallable es1 || nallable es2
+  | Kleene _ -> false 
+  | Ntimed (_, n) -> n==0 
+  ;;
+let isBot (es:es):bool = 
+  match es with 
+    Bot -> true 
+    |_ -> false 
+    ;; 
+  
+let rec getFst (es:es) :instance list= 
+  match es with 
+    Bot -> raise (Foo "getFst has a Bot as argument") 
+  | Emp -> raise (Foo "getFst has a Emp as argument") 
+  | Instance ins  -> [ins] 
+  | Con (es1, es2) -> if nallable es1 then append (getFst es1) (getFst es2) else getFst es1
+  | Disj (es1, es2) -> append (getFst es1) (getFst es2)
+  | Kleene esIn -> (getFst esIn) 
+  | Ntimed (esIn, n) -> (getFst esIn) 
+  ;;
+
+let superSetOf (bigger:instance) (smaller:instance) :bool = 
+  true;;
+
+let reoccur (evn: inclusion list) (lhs:es) (rhs:es) :bool = 
+  true;;
+
+
+let rec derivative (ins_given: instance) (es:es) : es = 
+  match es with 
+    Bot -> Bot
+  | Emp -> Bot
+  | Instance ins  -> if superSetOf ins_given ins then Emp else Bot
+  | Con (es1, es2) -> Con (derivative ins_given es1, es2)
+  | Disj (es1, es2) -> Disj (derivative ins_given es1, derivative ins_given es2)
+  | Kleene esIn -> Con (derivative ins_given esIn, es)
+  | Ntimed (esIn, n) -> Con (derivative ins_given esIn, Ntimed (esIn, n-1))
+  ;;
+
+
+
+let rec containment (evn: inclusion list) (lhs:es) (rhs:es) : (bool * binary_tree ) = 
+  let lhs = normalES lhs in 
+  let rhs = normalES rhs in 
+  let entail = string_of_inclusion lhs rhs in 
+  if nallable lhs == true && nallable rhs==false then (false, Node (entail, []))
+  else if isBot rhs then (false, Node (entail, []))
+  else if reoccur evn lhs rhs then (true, Node (entail, []))
+  else 
+    let (fst:instance list) = getFst lhs in 
+    let newEvn = append [(lhs, rhs)] evn in 
+    let rec helper (acc:binary_tree list) (fst_list:instance list): (bool * binary_tree list) = 
+      (match fst_list with 
+        [] -> (true , acc) 
+      | a::xs -> 
+        let (result, (tree:binary_tree)) =  containment newEvn (derivative a lhs) (derivative a lhs) in 
+        if result == false then (false, acc)
+        else helper (tree:: acc) xs 
+      )
+    in 
+    let (result, trees) =  helper [] fst in 
+    (result, Node (entail, trees))  
+    
+  ;;
+
+
 
 
 let check_containment lhs rhs : (bool * binary_tree ) = 
-  (true, Leaf)
-  (*check_containment lhs rhs *)
+  containment [] lhs rhs
   ;;
 
 let printReport (lhs:es) (rhs:es) :string =

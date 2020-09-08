@@ -190,3 +190,79 @@ let string_of_trace ((his, cur):trace) :string =
 
 let string_of_prg_state (t_li : trace list):string = 
   List.fold_left (fun acc a -> acc ^ string_of_trace a ) "\n" t_li ;;
+
+
+let compareSignal s1 s2 : bool =
+  match (s1, s2) with 
+    (One n1, One n2) -> String.compare n1 n2 == 0
+  | (Zero n1 , Zero n2 ) -> String.compare n1 n2 == 0 
+  | _ -> false 
+  ;;
+
+let controdict s1 s2 : bool =
+  match (s1, s2) with 
+    (One n1, Zero n2) -> String.compare n1 n2 == 0
+  | (Zero n1 , One n2 ) -> String.compare n1 n2 == 0 
+  | _ -> false 
+  ;;
+
+let rec oneOfFalse (sig_:signal) ss : bool =
+  match ss with 
+    [] -> false 
+  | head_sig:: xs -> if controdict sig_ head_sig then true else oneOfFalse sig_ xs
+;;
+(*true return has controdiction, false means no controdiction *)
+let rec checkHasFalse ss : bool = 
+  match ss with 
+  [] -> false 
+| x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
+;;
+
+
+
+let rec oneOf (sig_:signal) ss : bool =
+  match ss with 
+    [] -> false 
+  | sig_head:: xs -> 
+
+  if compareSignal sig_ sig_head then true else oneOf sig_ xs
+;;
+
+let rec deleteRedundent sl : signal list = 
+  match sl with 
+    [] -> sl 
+  | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
+
+  ;;
+ 
+let rec normalES es: es =
+  match es with 
+  | Disj (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (match (norES1, norES2) with 
+      | (Bot, Bot) -> Bot
+      | (Bot, _) -> norES2
+      | (_, Bot) -> norES1
+      | _ ->Disj (norES1, norES2)
+      )
+  | Con (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
+  | Con (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (*print_string (string_of_es norES1);*)
+      (match (norES1, norES2) with 
+        (Emp, _) -> norES2 
+      | (_, Emp) -> norES1
+      | (Bot, _) -> Bot 
+      | (_ , Bot) -> Bot 
+      | _ -> Con (norES1, norES2)
+      )
+
+  | Instance ss -> 
+    let ss1 = deleteRedundent ss in 
+    if checkHasFalse (ss1) then  Bot else 
+    (Instance ss1)
+  | Ntimed (esIn, n) -> if n==0 then Emp else Ntimed (normalES esIn, n) 
+  | _ -> es 
+  ;;

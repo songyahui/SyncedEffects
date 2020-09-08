@@ -23,7 +23,7 @@ type current = instance
 
 type trace = history * current 
 
-type inclusion = INC of es * es;;
+type inclusion = es * es;;
 
 type prog = Nothing 
           | Pause 
