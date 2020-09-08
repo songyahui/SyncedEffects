@@ -2,19 +2,15 @@ type var = string  (*name of the signal e.g., A B C*)
 type name = string
 
 
-type state = One | Zero 
-type mapping = (var * state) 
+type signal = One of var | Zero of var
 
 (*signal set*)
-type instance = mapping list * mapping list 
+type instance = signal list 
            (*前面的是constrain,  后面的是signal assignment*)
 
-type fst = Negation of name list
-           | Normal of name list
 ;;
 
 (*type event  = Instance of instance   | Not of instance *)
-
 
 type es = Bot 
         | Emp 

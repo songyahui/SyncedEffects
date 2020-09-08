@@ -61,8 +61,8 @@ es:
 | EMPTY { Emp }
 | LBrackets signals = existVar RBrackets 
 {
-  let temp = List.map (fun a -> (a, One)) signals in 
-  Instance ([], temp) }
+  let temp = List.map (fun a -> (One a)) signals in 
+  Instance (temp) }
 | LPAR r = es RPAR { r }
 | a = es CONCAT b = es { Con(a, b) } 
 | a = es  DISJ  b=es  {Disj (a, b)}

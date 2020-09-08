@@ -479,17 +479,17 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
   ;;
 
   
-let compareState s1 s2 : bool =
+let compareSignal s1 s2 : bool =
   match (s1, s2) with 
-    (One, One) -> true 
-  | (Zero, Zero) -> true 
+    (One n1, One n2) -> String.compare n1 n2 == 0
+  | (Zero n1 , Zero n2 ) -> String.compare n1 n2 == 0 
   | _ -> false 
   ;;
 
-let rec oneOfFalse (var, state) ss : bool =
+let rec oneOfFalse (sig_:signal) ss : bool =
   match ss with 
     [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state == false then true else oneOfFalse (var, state) xs
+  | head_sig:: xs -> if compareSignal sig_ head_sig == false then true else oneOfFalse sig_ xs
 ;;
 (*true return has controdiction, false means no controdiction *)
 let rec checkHasFalse ss : bool = 
@@ -500,13 +500,15 @@ let rec checkHasFalse ss : bool =
 
 
 
-let rec oneOf (var, state) ss : bool =
+let rec oneOf (sig_:signal) ss : bool =
   match ss with 
     [] -> false 
-  | (var1, state1):: xs -> if String.compare var var1 ==0 && compareState state1 state then true else oneOf (var, state) xs
+  | sig_head:: xs -> 
+
+  if compareSignal sig_ sig_head then true else oneOf sig_ xs
 ;;
 
-let rec deleteRedundent sl : mapping list = 
+let rec deleteRedundent sl : signal list = 
   match sl with 
     [] -> sl 
   | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
@@ -531,14 +533,14 @@ let rec normalES es: es =
       | _ -> Con (norES1, norES2)
       )
 
-  | Instance (con, ss) -> 
-    let con1 = deleteRedundent con in 
+  | Instance ss -> 
     let ss1 = deleteRedundent ss in 
-    if checkHasFalse (con1) then  Bot else 
-    (Instance (con1, ss1))
+    if checkHasFalse (ss1) then  Bot else 
+    (Instance ss1)
   | _ -> es 
   ;;
 
+  (*
 let add_Constain ((con, ss):instance) ((name, nowstate)) : instance= 
   (*if compareState nowstate One then 
   let (con', ss') = setTrue (con, ss) name in 
@@ -547,6 +549,7 @@ let add_Constain ((con, ss):instance) ((name, nowstate)) : instance=
   *) 
   (List.append con [(name, nowstate)], ss)
   ;;
+  *)
 
 let rec es_To_state (es:es) :prog_states = 
   match es with 
@@ -571,18 +574,18 @@ let rec es_To_state (es:es) :prog_states =
 let rec state_To_es (state:prog_states):es = 
   List.fold_left (fun acc (a, b) -> Disj (acc, (Con (a, Instance b)))) Bot state;;
   
-let rec setTrue ((con, ss):instance) (name) : instance= 
-  let rec helper (inn:mapping list ):mapping list  = 
+let rec setTrue (sig_list:instance) (name) : instance= 
+  let rec helper (inn:signal list ):signal list  = 
     (match inn with 
     [] -> raise  (Foo (name^" is not decleared"))
-  | (x, state)::xs -> 
-    if String.compare x name == 0 then List.append [(x, One)] xs else  List.append [(x, state)] (helper xs)
+  | sig_head::xs -> 
+    if compareSignal sig_head (One name) == true then List.append [(One name)] xs else  List.append [sig_head] (helper xs)
     )
-  in (con, helper ss)
+  in helper sig_list
   ;;
 
-let make_nothing (evn: string list) : mapping list = 
-  List.map (fun a -> (a, Zero) ) evn 
+let make_nothing (evn: string list) : signal list = 
+  List.map (fun a -> (Zero a) ) evn 
   ;;
 
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
@@ -593,22 +596,22 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | Pause -> 
     let helper (his, curr) = 
       let newHis = Con (his, Instance curr) in 
-      let newCurr = ([], make_nothing evn) in 
+      let newCurr = (make_nothing evn) in 
       (newHis, newCurr)
     in List.map (helper) current
   | Seq (p1, p2) ->  
     let states1 = forward evn current p1 original full in 
     forward evn states1 p2 original full
   | Declear (s, progIn ) -> 
-    forward (List.append evn [s]) (List.map (fun (his, (con, curr)) -> (his, (con, List.append curr [(s, Zero)]))) current) progIn original full
+    forward (List.append evn [s]) (List.map (fun (his, (curr)) -> (his, (List.append curr [(Zero s)]))) current) progIn original full
 
 
 
 
   | Present (s, p1, p2) -> 
   
-    let eff1 = forward evn (List.map (fun (his, cur)-> (his, add_Constain (setTrue cur s) (s, One) ) ) current) p1 original full in 
-    let eff2 = forward evn (List.map (fun (his, cur)-> (his, add_Constain cur (s, Zero) ) ) current) p2 original full in 
+    let eff1 = forward evn (List.map (fun (his, cur)-> (his, List.append [(One s)] cur ) ) current) p1 original full in 
+    let eff2 = forward evn (List.map (fun (his, cur)-> (his, List.append [(Zero s)] cur ) ) current) p2 original full in 
     (*if can_fun s original full == false then eff2 else *)
     List.append eff1 eff2
   

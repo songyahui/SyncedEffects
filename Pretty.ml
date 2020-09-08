@@ -114,15 +114,16 @@ let rec string_of_prog (p : prog) : string =
 
 
 let string_of_sl (sl):string = 
-  List.fold_left (fun acc (name, state) -> acc ^ " " ^ (match state with One -> name | Zero -> (*"!" ^name*) "")) "" sl
+  List.fold_left (fun acc sig_ -> 
+  acc ^ " " ^ 
+    (match sig_ with 
+      One name -> name 
+    | Zero name -> (*"!" ^name*) "")
+  ) "" sl
 ;;
 
-let string_of_instance ((cons, mapping):instance) :string = 
-  
-  (*let temp = "(" ^ string_of_sl cons ^ ")" in 
-  *)
+let string_of_instance (mapping:instance) :string = 
   let temp1 = "[" ^ string_of_sl mapping ^ "]" in 
-  (*temp ^ " & " ^*)
   temp1
   ;;
 
@@ -170,7 +171,7 @@ let string_of_inclusion (lhs:es) (rhs:es) :string =
   string_of_es lhs ^" |- " ^string_of_es rhs 
   ;;
 
-let string_of_state (state :state):string = 
+let string_of_state (state :signal):string = 
   match state with 
-  One -> "1"
-  | Zero -> "0";; 
+    One name -> name 
+  | Zero name -> "!"^name;; 
