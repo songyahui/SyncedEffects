@@ -118,18 +118,16 @@ let check_containment lhs rhs : (bool * binary_tree ) =
 
 let printReport (lhs:es) (rhs:es) :string =
 
-  let (res, tree) = check_containment lhs rhs in 
-  printTree ~line_prefix:"* " ~get_name ~get_children tree
-  (*
-  let entailment = (translate (normalize lhs)) ^ " |- " ^ (translate (normalize rhs)) (*and i = INC(lhs, rhs)*) in
+
+  let entailment = (string_of_es (normalES lhs)) ^ " |- " ^ (string_of_es (normalES rhs)) (*and i = INC(lhs, rhs)*) in
 
   let startTimeStamp = Sys.time() in
-  let (re, tree) =  printReportHelper lhs rhs in
+  let (re, tree) =  check_containment lhs rhs in
   let verification_time = "[Verification Time: " ^ string_of_float (Sys.time() -. startTimeStamp) ^ " s]\n" in
   let result = printTree ~line_prefix:"* " ~get_name ~get_children tree in
   let buffur = ( "===================================="^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
   in buffur
-  *)
+  
   ;;
 
 (*

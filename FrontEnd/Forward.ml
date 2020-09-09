@@ -87,7 +87,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | Pause -> 
     let helper (his, curr) = 
       let newHis = Con (his, Instance curr) in 
-      let newCurr = (make_nothing evn) in 
+      let newCurr = [] in 
       (newHis, newCurr)
     in List.map (helper) current
   | Seq (p1, p2) ->  
@@ -132,6 +132,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
   let (nm, inp_sig, oup_sig, pre,  post, prog) = spec_prog in 
+  (*print_string (string_of_prg_state (es_To_state pre));*)
   let final_states = forward ((*append inp_sig*) oup_sig) (es_To_state pre) prog prog full in 
   let final_effects =  normalES (state_To_es final_states)  in 
   string_of_inclusion final_effects post ^ "\n" ^
