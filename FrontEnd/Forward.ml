@@ -96,6 +96,11 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | Declear (s, progIn ) -> 
     forward (List.append evn [s]) ( current) progIn original full
 
+  | Loop prog ->
+     List.map (fun (his, curr) -> 
+      let newState_list = forward evn [(Emp, curr )] prog original full  in 
+      (Con (his, Kleene (state_To_es newState_list)),  [])
+      )current
 
 
 
@@ -127,7 +132,10 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       List.flatten (List.map (fun (his, curr) -> es_To_state (Con (his, post_callee))) current)
 
     
-  | _ -> raise (Foo "not there forward")
+
+  | Trap _ -> raise (Foo "not there forward")
+  | Exit _ -> raise (Foo "not there forward")
+  | Par _ -> raise (Foo "not there forward")
   ;;
 
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
