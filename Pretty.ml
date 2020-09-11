@@ -108,6 +108,7 @@ let rec string_of_prog (p : prog) : string =
   | Trap (mn, prog) -> "trap "  ^ mn ^" in\n" ^ string_of_prog prog ^" )"^ "\nend trap"
   | Exit (mn, d) -> "exit " ^ mn ^" " ^ string_of_int d
   | Run mn -> "run " ^ mn
+  | Suspend (prog, s) -> "abort \n" ^ string_of_prog prog ^ "\nwhen "^s
   ;;
 
 

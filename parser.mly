@@ -7,7 +7,7 @@
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
 %token EOF ENTIL EMPTY DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE END IN RUN
-%token THEN ELSE
+%token THEN ELSE ABORT WHEN
 %left CONCAT DISJ 
 %right SIMI PAR
 %token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR 
@@ -84,6 +84,7 @@ pRog_aux:
 | TRAP mn = VAR p1 = pRog  {Trap (mn, p1)}
 | EXIT mn = VAR d = INTE  {Exit (mn, d)}
 | RUN mn = VAR {Run mn}
+| ABORT p = pRog  WHEN s = VAR {Suspend (p, s)}
 
 pRog:
 | p =pRog_aux {p}

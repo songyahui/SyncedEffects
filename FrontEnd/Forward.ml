@@ -32,6 +32,7 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
       in 
       let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
       can_fun s body_calles full
+  | Suspend (p, s) -> can_fun s p full
   ;;
 
   
@@ -135,7 +136,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
   | Trap _ -> raise (Foo "not there forward")
   | Exit _ -> raise (Foo "not there forward")
-  | Par _ -> raise (Foo "not there forward")
+  | Par _  -> raise (Foo "not there forward")
+  | Suspend (p, s) -> raise (Foo "not there forward")
   ;;
 
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 

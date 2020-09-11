@@ -35,7 +35,8 @@ type prog = Nothing
           | Present of var * prog * prog
           | Trap of name * prog
           | Exit of name * int
-          | Run of name 
+          | Run of name
+          | Suspend of prog * name 
 
 type ltl = Lable of string 
         | Next of ltl

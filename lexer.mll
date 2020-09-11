@@ -49,6 +49,8 @@ rule token = parse
 | "in" {IN}
 | "then" {THEN}
 | "else" {ELSE}
+| "abort" {ABORT} 
+| "when" {WHEN}
 | '[' { LBrackets }
 | ']' { RBrackets }
 | '(' { LPAR }
