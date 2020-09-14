@@ -88,10 +88,10 @@ let rec containment (evn: inclusion list) (lhs:es) (rhs:es) : (bool * binary_tre
   let lhs = normalES lhs in 
   let rhs = normalES rhs in 
   let entail = string_of_inclusion lhs rhs in 
-  if nallable lhs == true && nallable rhs==false then (false, Node (entail, []))
-  else if isBot lhs then (true, Node (entail, []))
-  else if isBot rhs then (false, Node (entail, []))
-  else if reoccur evn lhs rhs then (true, Node (entail, []))
+  if nallable lhs == true && nallable rhs==false then (false, Node (entail^ "   [DISPROVE]", []))
+  else if isBot lhs then (true, Node (entail^ "   [Bot-LHS]", []))
+  else if isBot rhs then (false, Node (entail^ "   [Bot-RHS]", []))
+  else if reoccur evn lhs rhs then (true, Node (entail^ "   [Reoccur]", []))
   else 
     let (fst:instance list) = getFst lhs in 
     let newEvn = append [(lhs, rhs)] evn in 
@@ -99,13 +99,13 @@ let rec containment (evn: inclusion list) (lhs:es) (rhs:es) : (bool * binary_tre
       (match fst_list with 
         [] -> (true , acc) 
       | a::xs -> 
-        let (result, (tree:binary_tree)) =  containment newEvn (derivative a lhs) (derivative a lhs) in 
+        let (result, (tree:binary_tree)) =  containment newEvn (derivative a lhs) (derivative a rhs) in 
         if result == false then (false, acc)
         else helper (tree:: acc) xs 
       )
     in 
     let (result, trees) =  helper [] fst in 
-    (result, Node (entail, trees))  
+    (result, Node (entail^ "   [UNFOLD]", trees))  
     
   ;;
 

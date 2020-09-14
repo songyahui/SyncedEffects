@@ -21,7 +21,7 @@ type history = es
 
 type current = instance
 
-type trace = history * current 
+type trace = history *  current option
 
 type inclusion = es * es;;
 
@@ -48,7 +48,7 @@ type ltl = Lable of string
         | AndLTL of ltl * ltl
         | OrLTL of ltl * ltl
 
-type prog_states = (es * instance) list
+type prog_states = trace list
 
 type spec_prog = name * var list * var list * es * es * prog
             (* name , input, output, precon, postcon, body*)

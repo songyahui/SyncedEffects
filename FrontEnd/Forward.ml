@@ -39,7 +39,8 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
 
 let rec es_To_state (es:es) :prog_states = 
   match es with 
-  | Instance ins -> [(Emp, ins)]
+  | Emp -> [(Emp, None)]
+  | Instance ins -> [(Emp, Some ins)]
   | Con (es1, es2) -> 
     let his_cur_list = es_To_state es2 in 
     List.map (fun (his,cur) -> (Con (es1, his),cur)) his_cur_list
@@ -58,8 +59,21 @@ let rec es_To_state (es:es) :prog_states =
 
 
 let rec state_To_es (state:prog_states):es = 
-  List.fold_left (fun acc (a, b) -> Disj (acc, (Con (a, Instance b)))) Bot state;;
+  List.fold_left (fun acc (a, b) -> 
+  match b with 
+    None -> Disj (acc, a)
+  | Some b -> 
+  Disj (acc, (Con (a, Instance b)))) Bot state;;
   
+let rec addToHead (ins: instance) (es:es) :es = 
+  match es with
+  | Instance ins1 ->  Instance (List.append ins ins1)
+  | Con (es1, es2) -> Con (addToHead ins es1, es2) 
+  | Disj (es1, es2) -> Disj (addToHead  ins es1, addToHead ins es2)
+  | Kleene esIn -> Con (addToHead ins esIn, es)
+  | Ntimed (esIn, n) -> Con (addToHead ins esIn, Ntimed (esIn, n-1))
+  | _ -> es 
+  ;;
 
 let make_nothing (evn: string list) : signal list = 
   List.map (fun a -> (Zero a) ) evn 
@@ -68,16 +82,21 @@ let make_nothing (evn: string list) : signal list =
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
   match prog with 
     Nothing -> 
-  
     List.map (fun (his, curr) -> 
-    (his, List.append (make_nothing evn) curr )) current
+    (his,  curr )) current
   | Emit s -> 
-    List.map (fun (his, curr) -> (his, List.append [(One s)] curr )) current
+    List.map (fun (his, curr) -> 
+    (match curr with 
+      None -> raise (Foo "Emit doesn't work...")
+     | Some curr -> (his, Some (List.append [(One s)] curr) ))) current
   | Pause -> 
     let helper (his, curr) = 
-      let newHis = Con (his, Instance curr) in 
-      let newCurr = [] in 
+      let newCurr = Some [] in 
+      (match curr with 
+        None -> (his, newCurr)
+      | Some curr -> let newHis = Con (his, Instance curr) in 
       (newHis, newCurr)
+      )
     in List.map (helper) current
   | Seq (p1, p2) ->  
     let states1 = forward evn current p1 original full in 
@@ -86,22 +105,35 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
     forward (List.append evn [s]) ( current) progIn original full
 
   | Loop prog ->
+     (*forward evn current prog original full 
+     *)
      List.map (fun (his, curr) -> 
+      match curr with 
+        None -> raise (Foo "something wrong in loop")
+      | Some curr1 ->
       let newState_list = forward evn [(Emp, curr )] prog original full  in 
-      (Con (his, Kleene (state_To_es newState_list)),  [])
+      (Con (his, Kleene (state_To_es newState_list)), None)
       )current
 
 
 
   | Present (s, p1, p2) -> 
   
-    let eff1 = forward evn (List.map (fun (his, cur)-> (his, List.append [(One s)] cur ) ) current) p1 original full in 
-    let eff2 = forward evn (List.map (fun (his, cur)-> (his, List.append [(Zero s)] cur ) ) current) p2 original full in 
+    let eff1 = forward evn (List.map (fun (his, cur)-> 
+    match cur with 
+      None -> (his, None)
+    | Some cur ->
+    (his, Some (List.append [(One s)] cur )) ) current) p1 original full in 
+    let eff2 = forward evn (List.map (fun (his, cur)-> 
+    match cur with 
+      None -> (his, None)
+    | Some cur ->
+    (his, Some (List.append [(Zero s)] cur )) ) current) p2 original full in 
     
     (*
-    print_string(string_of_prg_state eff1);
-
-    print_string(string_of_prg_state eff2);
+    print_string(string_of_es (normalES (state_To_es eff1)));
+    print_string ("\n");
+    print_string(string_of_es (normalES (state_To_es eff2)));
     *)
 
     List.append eff1 eff2
@@ -118,16 +150,20 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
       (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
       printReport (normalES (state_To_es current) ) pre_callee));
-      if res == false then raise (Foo ("error when calling "^mn^"\n"))
+      
+      if res == false then raise (Foo ("Error when calling "^mn^"\n"))
       else 
-      List.flatten (List.map (fun (his, curr) -> es_To_state (Con (his, post_callee))) current)
+      List.flatten (List.map (fun (his, curr) -> 
+      match curr with 
+        None -> [(his, curr)]
+      | Some curr -> es_To_state (Con (his, (addToHead curr post_callee)))) current)
 
     
 
   | Trap _ -> raise (Foo "not there forward")
   | Exit _ -> raise (Foo "not there forward")
   | Par _  -> raise (Foo "not there forward")
-  | Suspend (p, s) -> raise (Foo "not there forward")
+  | _ -> raise (Foo "not there forward")
   ;;
 
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
@@ -138,10 +174,12 @@ let verifier (spec_prog:spec_prog) (full: spec_prog list):string =
   "\n========== Module: "^ nm ^" ==========\n" ^
   "[Pre  Condition] " ^ string_of_es pre ^"\n"^
   "[Post Condition] " ^ string_of_es post ^"\n"^
-  "[Final Effects] " ^ string_of_es final_effects ^"\n\n"^
+  "[Final  Effects] " ^ string_of_es final_effects ^"\n\n"^
   (*(string_of_inclusion final_effects post) ^ "\n" ^*)
   "[T.r.s: Verification for Post Condition]\n" ^ 
-  printReport final_effects post;;
+  printReport final_effects post
+  
+  ;;
 
 let forward_verification (progs:spec_prog list):string = 
   List.fold_left (fun acc a -> acc ^ "\n\n" ^ verifier a progs) "" progs ;; 
