@@ -2,8 +2,8 @@
   output CLOSE;
 
   /*@
-  require [OPEN] 
-  ensure [].[CLOSE] 
+  require {OPEN} 
+  ensure {}.{CLOSE} 
   @*/
 
   pause; 
@@ -17,8 +17,8 @@
   output CLOSE;
 
   /*@
-  require [] 
-  ensure ([BTN].[CLOSE]\/[])^*
+  require {} 
+  ensure (({BTN}.{CLOSE})\/{})*
   @*/
 
   signal OPEN in 

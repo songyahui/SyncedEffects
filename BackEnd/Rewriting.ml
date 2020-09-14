@@ -125,7 +125,7 @@ let printReport (lhs:es) (rhs:es) :string =
   let (re, tree) =  check_containment lhs rhs in
   let verification_time = "[Verification Time: " ^ string_of_float (Sys.time() -. startTimeStamp) ^ " s]\n" in
   let result = printTree ~line_prefix:"* " ~get_name ~get_children tree in
-  let buffur = ( "===================================="^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
+  let buffur = ( "----------------------------------------"^"\n" ^(entailment)^"\n[Result] " ^(if re then "Succeed\n" else "Fail\n")  ^verification_time^" \n\n"^ result)
   in buffur
   
   ;;

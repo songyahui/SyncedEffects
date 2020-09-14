@@ -6,10 +6,11 @@
 %token <int> INTE
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
-%token EOF ENTIL EMPTY DISJ LBrackets  RBrackets COMMA CONCAT POWER KLEENE END IN RUN
-%token THEN ELSE ABORT WHEN
+%token EOF ENTIL EMPTY DISJ COMMA CONCAT  KLEENE END IN RUN
+%token THEN ELSE ABORT WHEN LBRACK RBRACK
+(* LBrackets  RBrackets POWER*)
 %left CONCAT DISJ 
-%right SIMI PAR
+(* %right SIMI PAR *)
 %token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR 
 %token LSPEC RSPEC ENSURE REQUIRE MODULE COLON INPUT OUTPUT
 
@@ -59,15 +60,15 @@ existVar:
 
 es:
 | EMPTY { Emp }
-| LBrackets signals = existVar RBrackets 
+| LBRACK signals = existVar RBRACK 
 {
   let temp = List.map (fun a -> (One a)) signals in 
   Instance (temp) }
 | LPAR r = es RPAR { r }
 | a = es CONCAT b = es { Con(a, b) } 
 | a = es  DISJ  b=es  {Disj (a, b)}
-| LPAR a = es RPAR POWER KLEENE {Kleene a}
-| LPAR r = es RPAR POWER n = INTE { Ntimed (r, n) }
+| LPAR a = es RPAR KLEENE {Kleene a}
+| LPAR r = es RPAR n = INTE { Ntimed (r, n) }
 
 
 

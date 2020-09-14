@@ -51,10 +51,11 @@ rule token = parse
 | "else" {ELSE}
 | "abort" {ABORT} 
 | "when" {WHEN}
-| '[' { LBrackets }
-| ']' { RBrackets }
+
 | '(' { LPAR }
 | ')' { RPAR }
+| '{' { LBRACK  }
+| '}' { RBRACK }
 | ';' { SIMI }
 | int      { INTE (int_of_string (Lexing.lexeme lexbuf)) }
 | '.' { CONCAT }
@@ -66,7 +67,7 @@ rule token = parse
 | "\\/" {DISJ}
 | ',' { COMMA }
 | ':' { COLON }
-| '^' { POWER }
+
 | '*' {KLEENE}
 | "<>" {FUTURE}  
 
@@ -82,6 +83,9 @@ rule token = parse
 
 (*
 
+| '^' { POWER }
+| '[' { LBrackets }
+| ']' { RBrackets }
 | "TRUE" { TRUE }
 | "FALSE" { FALSE }
 | "if" {IF}

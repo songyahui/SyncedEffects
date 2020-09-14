@@ -37,18 +37,6 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
 
   
 
-
-  (*
-let add_Constain ((con, ss):instance) ((name, nowstate)) : instance= 
-  (*if compareState nowstate One then 
-  let (con', ss') = setTrue (con, ss) name in 
-  (List.append con' [(name, nowstate)], ss')
-  else
-  *) 
-  (List.append con [(name, nowstate)], ss)
-  ;;
-  *)
-
 let rec es_To_state (es:es) :prog_states = 
   match es with 
   | Instance ins -> [(Emp, ins)]
@@ -128,6 +116,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       in 
       let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
       let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
+      (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
+      printReport (normalES (state_To_es current) ) pre_callee));
       if res == false then raise (Foo ("error when calling "^mn^"\n"))
       else 
       List.flatten (List.map (fun (his, curr) -> es_To_state (Con (his, post_callee))) current)
@@ -145,7 +135,12 @@ let verifier (spec_prog:spec_prog) (full: spec_prog list):string =
   (*print_string (string_of_prg_state (es_To_state pre));*)
   let final_states = forward ((*append inp_sig*) oup_sig) (es_To_state pre) prog prog full in 
   let final_effects =  normalES (state_To_es final_states)  in 
-  string_of_inclusion final_effects post ^ "\n" ^
+  "\n========== Module: "^ nm ^" ==========\n" ^
+  "[Pre  Condition] " ^ string_of_es pre ^"\n"^
+  "[Post Condition] " ^ string_of_es post ^"\n"^
+  "[Final Effects] " ^ string_of_es final_effects ^"\n\n"^
+  (*(string_of_inclusion final_effects post) ^ "\n" ^*)
+  "[T.r.s: Verification for Post Condition]\n" ^ 
   printReport final_effects post;;
 
 let forward_verification (progs:spec_prog list):string = 
