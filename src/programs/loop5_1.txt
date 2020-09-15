@@ -1,16 +1,17 @@
-(signal A
-(signal B 
-(signal C
- 
- (emit A;
- (loop 
- pause
- )
 
 
- )
-)
- 
 
-)
-)
+  module loopTEST:
+  output A,B, C;
+
+  /*@
+  require {} 
+  ensure {}
+  @*/
+
+  emit A;
+  loop 
+    pause
+  end loop 
+
+  end module

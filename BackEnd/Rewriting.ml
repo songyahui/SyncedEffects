@@ -63,12 +63,7 @@ let rec reoccur (evn: inclusion list) (lhs:es) (rhs:es) :bool =
       else reoccur xs lhs rhs
 ;;
 
- 
- 
- (* foldable 
 
-  Coq
-*)
 
 
 let rec derivative (ins_given: instance) (es:es) : es = 

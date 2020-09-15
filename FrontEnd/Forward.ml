@@ -67,7 +67,7 @@ let rec state_To_es (state:prog_states):es =
   
 let rec addToHead (ins: instance) (es:es) :es = 
   match es with
-  | Instance ins1 ->  Instance (List.append ins ins1)
+  | Instance ins1 ->  Instance (List.append ins1 ins )
   | Con (es1, es2) -> Con (addToHead ins es1, es2) 
   | Disj (es1, es2) -> Disj (addToHead  ins es1, addToHead ins es2)
   | Kleene esIn -> Con (addToHead ins esIn, es)
@@ -77,6 +77,36 @@ let rec addToHead (ins: instance) (es:es) :es =
 
 let make_nothing (evn: string list) : signal list = 
   List.map (fun a -> (Zero a) ) evn 
+  ;;
+
+
+let rec split_es_head_tail (es:es) :(instance * es) list = 
+  match es with 
+  | Instance ins -> [(ins, Emp)]
+  | Con (es1, es2) -> 
+    let head_tail_list = split_es_head_tail es1 in 
+    List.map (fun (head,tail) -> (head, Con (tail, es2))) head_tail_list
+    
+  | Disj (es1, es2) -> List.append (split_es_head_tail es1) (split_es_head_tail es2)
+  | Kleene esIn -> 
+    let head_tail_list = split_es_head_tail esIn in 
+    List.map (fun (head,tail) -> (head, Con (tail, es))) head_tail_list
+  | Ntimed (esIn, n) ->
+    assert (n>1);
+    let head_tail_list = split_es_head_tail esIn in 
+    List.map (fun (head,tail) -> (head, Con (tail, Ntimed (esIn, n-1)))) head_tail_list
+
+  | _ -> raise (Foo "there is a EMP OR BOT HERE in split_es_head_tail")
+  ;;
+
+let isEmp xs : bool = 
+  match xs with 
+    [] -> true 
+  | _ -> false 
+;;
+
+let equla_List_of_State left right : bool= 
+  true
   ;;
 
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
@@ -107,13 +137,53 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | Loop prog ->
      (*forward evn current prog original full 
      *)
-     List.map (fun (his, curr) -> 
+     List.flatten (List.map (fun (his, curr) -> 
       match curr with 
-        None -> raise (Foo "something wrong in loop")
+        None -> raise (Foo "something wrong before entering loop")
       | Some curr1 ->
-      let newState_list = forward evn [(Emp, curr )] prog original full  in 
-      (Con (his, Kleene (state_To_es newState_list)), None)
-      )current
+        (*(*fixpoint computing*)
+
+        let rec helper curent_states previous_states: prog_states list= 
+          if equla_List_of_State curent_states (hd previous_states) then previous_states
+          else 
+            let next_state = List.flatten (List.map (fun (new_his, new_cur) -> 
+              forward evn [(Emp, new_cur )] prog original full
+            )curent_states)
+            in helper next_state (curent_states::previous_states)
+        in 
+        let newState_list = forward evn [(Emp, curr )] prog original full in
+        let final_effect = helper newState_list [] in 
+        List.map ()
+        
+        final_effect
+        *)
+      
+       (* by cases *)
+        let newState_list = forward evn [(Emp, Some [] )] prog original full in
+        List.flatten (
+          List.map (fun (new_his, new_curr) ->
+          let new_his = normalES new_his in 
+          match new_curr with 
+            None -> raise (Foo "something wrong inside loop")
+          | Some new_curr1 -> 
+            let head_tail_list = split_es_head_tail (normalES new_his) in 
+            List.map (fun (head, tail) ->
+            match (isEmp (head), isEmp new_curr1) with
+              (true, true) -> (Con (his, Con (Instance curr1, Kleene (Con (tail, Instance head)))), None)
+            | (false, true) ->(Con (his, Con (Instance (append curr1 head), Kleene (Con (tail, Instance head)))), None)
+            | (true, false) ->(Con (his, Con (Instance curr1, Kleene (Con (tail, Instance new_curr1)))), None)
+            | (false, false) ->(Con (his, Con (Instance (append curr1 head), Kleene (addToHead new_curr1 new_his))), None)
+            ) head_tail_list
+          ) newState_list
+        )
+        
+        
+      
+      )
+      
+      
+      current
+      )
 
 
 
