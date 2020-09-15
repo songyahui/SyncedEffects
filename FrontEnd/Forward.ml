@@ -169,9 +169,13 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
             let head_tail_list = split_es_head_tail (normalES new_his) in 
             List.map (fun (head, tail) ->
             match (isEmp (head), isEmp new_curr1) with
+              (*两头都有pause, his.curr.(tail.head)^* *)
               (true, true) -> (Con (his, Con (Instance curr1, Kleene (Con (tail, Instance head)))), None)
+              (*右边有pause, his.(curr+head).(tail.head)^* *)
             | (false, true) ->(Con (his, Con (Instance (append curr1 head), Kleene (Con (tail, Instance head)))), None)
+              (*左边有pause, his.curr.(tail.new_curr)^* *)
             | (true, false) ->(Con (his, Con (Instance curr1, Kleene (Con (tail, Instance new_curr1)))), None)
+              (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
             | (false, false) ->(Con (his, Con (Instance (append curr1 head), Kleene (addToHead new_curr1 new_his))), None)
             ) head_tail_list
           ) newState_list
