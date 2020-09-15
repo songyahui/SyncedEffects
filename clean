@@ -8,5 +8,5 @@ rm parser.ml
 rm parser.mli
 
 rm hip
-rm sleek
-rm ltl
+#rm sleek
+#rm ltl

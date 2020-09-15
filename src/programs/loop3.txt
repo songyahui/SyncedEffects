@@ -5,7 +5,7 @@
 
   /*@
   require {} 
-  ensure {}
+  ensure {A} . ({ B}.{C})*
   @*/
 
   emit A;

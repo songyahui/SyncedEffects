@@ -114,11 +114,11 @@ specProg:
   OUTPUT outs = existVar SIMI
   p = pRog 
   END MODULE
-  {(nm, ins, outs, Emp, Emp, p)}
+  {(nm, ins, outs, Instance [], Emp, p)}
 
 | MODULE nm = VAR COLON 
   OUTPUT outs = existVar SIMI
   p = pRog 
   END MODULE
-  {(nm, [], outs, Emp, Emp, p)}
+  {(nm, [], outs, Instance [], Emp, p)}
 

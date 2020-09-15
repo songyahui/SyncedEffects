@@ -3,7 +3,7 @@
 
   /*@
   require {} 
-  ensure {}
+  ensure {A, B} . ({C, B})*
   @*/
 
   emit A;
