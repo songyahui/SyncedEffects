@@ -83,7 +83,8 @@ pRog_aux:
 | SIGNAL s = VAR IN p = pRog END SIGNAL { Declear (s, p)}
 | PRESENT s = VAR THEN p1 = pRog ELSE p2 = pRog END PRESENT { Present (s, p1, p2)}
 | TRAP mn = VAR p1 = pRog  {Trap (mn, p1)}
-| EXIT mn = VAR d = INTE  {Exit (mn, d)}
+| EXIT mn = VAR  {Exit mn}
+(*| EXIT mn = VAR d = INTE  {Exit (mn, d)}*)
 | RUN mn = VAR {Run mn}
 | ABORT p = pRog  WHEN s = VAR {Suspend (p, s)}
 

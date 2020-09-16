@@ -106,7 +106,7 @@ let rec string_of_prog (p : prog) : string =
   | Emit s -> "emit " ^ s 
   | Present (s, p1, p2) -> "present " ^ s ^ "\nthen " ^ string_of_prog p1 ^"\nelse " ^ string_of_prog p2 ^"\nend present"
   | Trap (mn, prog) -> "trap "  ^ mn ^" in\n" ^ string_of_prog prog ^" )"^ "\nend trap"
-  | Exit (mn, d) -> "exit " ^ mn ^" " ^ string_of_int d
+  | Exit  mn -> "exit " ^ mn 
   | Run mn -> "run " ^ mn
   | Suspend (prog, s) -> "abort \n" ^ string_of_prog prog ^ "\nwhen "^s
   ;;
@@ -171,14 +171,20 @@ let string_of_inclusion (lhs:es) (rhs:es) :string =
   string_of_es lhs ^" |- " ^string_of_es rhs 
   ;;
 
-let string_of_trace ((his, cur):trace) :string = 
+let string_of_trace ((his, cur, trap):trace) :string = 
   "Trace: (" ^ string_of_es his ^")." ^ 
   (match cur with 
     None -> ""
   | Some cur -> 
   string_of_instance cur 
   )
-  ^"\n";; 
+  ^"  "^
+  (match trap with 
+    None -> ""
+  | Some trapname -> 
+  "exiting from "^ trapname
+  )^"\n"
+  ;; 
 
 let string_of_prg_state (t_li : trace list):string = 
   List.fold_left (fun acc a -> acc ^ string_of_trace a ) "\n" t_li ;;

@@ -39,27 +39,27 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
 
 let rec es_To_state (es:es) :prog_states = 
   match es with 
-  | Emp -> [(Emp, None)]
-  | Instance ins -> [(Emp, Some ins)]
+  | Emp -> [(Emp, None, None)]
+  | Instance ins -> [(Emp, Some ins, None)]
   | Con (es1, es2) -> 
     let his_cur_list = es_To_state es2 in 
-    List.map (fun (his,cur) -> (Con (es1, his),cur)) his_cur_list
+    List.map (fun (his,cur,trap) -> (Con (es1, his),cur, trap)) his_cur_list
     
   | Disj (es1, es2) -> List.append (es_To_state es1) (es_To_state es2)
   | Kleene esIn -> 
     let his_cur_list = es_To_state esIn in 
-    List.map (fun (his,cur) -> (Con (es, his), cur)) his_cur_list
+    List.map (fun (his,cur, trap) -> (Con (es, his), cur, trap)) his_cur_list
   | Ntimed (esIn, n) ->
     assert (n>1);
     let his_cur_list = es_To_state esIn in 
-    List.map (fun (his,cur) -> (Con (Ntimed (esIn, n-1), his), cur)) his_cur_list
+    List.map (fun (his,cur, trap) -> (Con (Ntimed (esIn, n-1), his), cur, trap)) his_cur_list
 
   | _ -> raise (Foo "there is a EMP OR BOT HERE")
   ;;
 
 
 let rec state_To_es (state:prog_states):es = 
-  List.fold_left (fun acc (a, b) -> 
+  List.fold_left (fun acc (a, b, trap) -> 
   match b with 
     None -> Disj (acc, a)
   | Some b -> 
@@ -112,56 +112,68 @@ let equla_List_of_State left right : bool=
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
   match prog with 
     Nothing -> 
-    List.map (fun (his, curr) -> 
-    (his,  curr )) current
+    List.map (fun (his, curr, trap) -> 
+    (his,  curr, trap )) current
   | Emit s -> 
-    List.map (fun (his, curr) -> 
-    (match curr with 
-      None -> raise (Foo "Emit doesn't work...")
-     | Some curr -> (his, Some (List.append [(One s)] curr) ))) current
+    List.map (fun (his, curr, trap) -> 
+      (match trap with 
+      | Some name  -> (his, curr, trap)
+      | None -> 
+          (match curr with 
+            None -> raise (Foo "Emit doesn't work...")
+          | Some curr -> (his, Some (List.append [(One s)] curr), trap )
+          )
+      )) current
   | Pause -> 
-    let helper (his, curr) = 
+    let helper (his, curr, trap) = 
+      match trap with
+      | Some name -> (his, curr, trap)
+      | None -> 
       let newCurr = Some [] in 
       (match curr with 
-        None -> (his, newCurr)
+        None -> (his, newCurr, trap)
       | Some curr -> let newHis = Con (his, Instance curr) in 
-      (newHis, newCurr)
+      (newHis, newCurr, trap)
       )
     in List.map (helper) current
   | Seq (p1, p2) ->  
-    let states1 = forward evn current p1 original full in 
-    forward evn states1 p2 original full
+    List.flatten (
+      List.map (fun (his, cur, trap) ->
+    match trap with 
+      Some _ ->[(his, cur, trap)]
+    | None -> let states1 = forward evn current p1 original full in 
+              List.flatten (List.map (fun (his1, cur1, trap1)->
+              match trap1 with 
+                Some _ -> [(his1, cur1, trap1)]
+              | None -> forward evn [(his1, cur1, trap1)] p2 original full
+
+              )states1)
+    
+    ) current 
+    )
+    
+    
   | Declear (s, progIn ) -> 
     forward (List.append evn [s]) ( current) progIn original full
 
   | Loop prog ->
      (*forward evn current prog original full 
      *)
-     List.flatten (List.map (fun (his, curr) -> 
+     List.flatten (List.map (fun (his, curr, trap) -> 
+      match trap with 
+      | Some name  -> [(his, curr, trap)]
+      | None ->
       match curr with 
         None -> raise (Foo "something wrong before entering loop")
       | Some curr1 ->
-        (*(*fixpoint computing*)
-
-        let rec helper curent_states previous_states: prog_states list= 
-          if equla_List_of_State curent_states (hd previous_states) then previous_states
-          else 
-            let next_state = List.flatten (List.map (fun (new_his, new_cur) -> 
-              forward evn [(Emp, new_cur )] prog original full
-            )curent_states)
-            in helper next_state (curent_states::previous_states)
-        in 
-        let newState_list = forward evn [(Emp, curr )] prog original full in
-        let final_effect = helper newState_list [] in 
-        List.map ()
         
-        final_effect
-        *)
-      
        (* by cases *)
-        let newState_list = forward evn [(Emp, Some [] )] prog original full in
+        let newState_list = forward evn [(Emp, Some [], trap )] prog original full in
         List.flatten (
-          List.map (fun (new_his, new_curr) ->
+          List.map (fun (new_his, new_curr, new_trap) ->
+          match new_trap with 
+          | Some name -> [(Con (his, addToHead curr1 new_his), new_curr, new_trap)]
+          | None -> 
           let new_his = normalES new_his in 
           match new_curr with 
             None -> raise (Foo "something wrong inside loop")
@@ -170,13 +182,13 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
             List.map (fun (head, tail) ->
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
-              (true, true) -> (Con (his, Con (Instance curr1, Kleene (Con (tail, Instance head)))), None)
+              (true, true) -> (Con (his, Con (Instance curr1, Kleene (Con (tail, Instance head)))), None, None)
               (*右边有pause, his.(curr+head).(tail.head)^* *)
-            | (false, true) ->(Con (his, Con (Instance (append curr1 head), Kleene (Con (tail, Instance head)))), None)
+            | (false, true) ->(Con (his, Con (Instance (append curr1 head), Kleene (Con (tail, Instance head)))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
-            | (true, false) ->(Con (his, Con (Instance curr1, Kleene (Con (tail, Instance new_curr1)))), None)
+            | (true, false) ->(Con (his, Con (Instance curr1, Kleene (Con (tail, Instance new_curr1)))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
-            | (false, false) ->(Con (his, Con (Instance (append curr1 head), Kleene (addToHead new_curr1 new_his))), None)
+            | (false, false) ->(Con (his, Con (Instance (append curr1 head), Kleene (addToHead new_curr1 new_his))), None, None)
             ) head_tail_list
           ) newState_list
         )
@@ -192,50 +204,64 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
 
   | Present (s, p1, p2) -> 
-  
-    let eff1 = forward evn (List.map (fun (his, cur)-> 
-    match cur with 
-      None -> (his, None)
-    | Some cur ->
-    (his, Some (List.append [(One s)] cur )) ) current) p1 original full in 
-    let eff2 = forward evn (List.map (fun (his, cur)-> 
-    match cur with 
-      None -> (his, None)
-    | Some cur ->
-    (his, Some (List.append [(Zero s)] cur )) ) current) p2 original full in 
+    List.flatten (List.map (fun (his, curr, trap) -> 
+      (match trap with 
+      | Some name  -> [(his, curr, trap)]
+      | None -> 
+          match curr with 
+          | None -> [(his, None, trap)]
+          | Some cur -> 
+            (
+            let eff1 = forward evn [(his, Some (List.append [(One s)] cur ), trap)] p1 original full in 
+            let eff2 = forward evn [(his, Some (List.append [(Zero s)] cur ), trap)] p2 original full in 
+            List.append eff1 eff2
+            )
+      )
+    ) current)
     
-    (*
-    print_string(string_of_es (normalES (state_To_es eff1)));
-    print_string ("\n");
-    print_string(string_of_es (normalES (state_To_es eff2)));
-    *)
-
-    List.append eff1 eff2
   
+    
+        (*
+      print_string(string_of_es (normalES (state_To_es eff1)));
+      print_string ("\n");
+      print_string(string_of_es (normalES (state_To_es eff2)));
+      *)
   | Run mn -> 
-      let rec helper modules = 
-        match modules with 
-          [] -> raise (Foo ("module "^mn ^"undefined"))
-        | x::xs -> 
-        let (name, _, _, _, _, _) = x in
-        if String.compare name mn == 0 then x else helper xs 
-      in 
-      let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
-      let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
-      (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
-      printReport (normalES (state_To_es current) ) pre_callee));
-      
-      if res == false then raise (Foo ("Error when calling "^mn^"\n"))
-      else 
-      List.flatten (List.map (fun (his, curr) -> 
-      match curr with 
-        None -> [(his, curr)]
-      | Some curr -> es_To_state (Con (his, (addToHead curr post_callee)))) current)
+      List.flatten (List.map (
+        fun (his, cur, trap) ->
+          match trap with
+            Some name -> [(his, cur, trap)]
+          | None -> 
+          let rec helper modules = 
+            match modules with 
+              [] -> raise (Foo ("module "^mn ^"undefined"))
+            | x::xs -> 
+            let (name, _, _, _, _, _) = x in
+            if String.compare name mn == 0 then x else helper xs 
+          in 
+          let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
+          let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
+          (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
+          printReport (normalES (state_To_es current) ) pre_callee));
+          
+          if res == false then raise (Foo ("Error when calling "^mn^"\n"))
+          else 
+          List.flatten (List.map (fun (his, curr, trap) -> 
+          match curr with 
+            None -> [(his, curr, trap)]
+          | Some curr -> es_To_state (Con (his, (addToHead curr post_callee)))) current)
+  
+      ) current )
 
-    
+      
 
   | Trap _ -> raise (Foo "not there forward")
-  | Exit _ -> raise (Foo "not there forward")
+  | Exit name -> 
+      List.map (fun (his, cur, trap)-> 
+      match trap with 
+        Some _ -> (his, cur, trap)
+      | None -> (his, cur, Some name)
+      )current
   | Par _  -> raise (Foo "not there forward")
   | _ -> raise (Foo "not there forward")
   ;;

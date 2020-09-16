@@ -21,7 +21,7 @@ type history = es
 
 type current = instance
 
-type trace = history *  current option
+type trace = history *  current option * name option (*exiting from a trap*) 
 
 type inclusion = es * es;;
 
@@ -34,7 +34,7 @@ type prog = Nothing
           | Emit of var
           | Present of var * prog * prog
           | Trap of name * prog
-          | Exit of name * int
+          | Exit of name
           | Run of name
           | Suspend of prog * name 
 
