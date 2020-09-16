@@ -255,7 +255,20 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 
       
 
-  | Trap _ -> raise (Foo "not there forward")
+  | Trap (mn, prog) -> 
+      List.flatten (List.map (fun (his, cur, trap)-> 
+      match trap with 
+        Some _ -> [(his, cur, trap)]
+      | None -> 
+          let eff = forward evn [(his, cur, trap)] prog original full in 
+          List.map (fun (hisIn, curIn, trapIn)->
+          match trapIn with 
+            Some name -> if String.compare mn name == 0 then (hisIn, curIn, None)
+                         else (hisIn, curIn, trapIn)
+          | None -> (hisIn, curIn, trapIn)
+          )
+          eff
+      )current)
   | Exit name -> 
       List.map (fun (his, cur, trap)-> 
       match trap with 
