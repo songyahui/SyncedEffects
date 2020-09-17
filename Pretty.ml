@@ -149,6 +149,7 @@ let rec string_of_es (es:es) :string =
   | Instance ins  -> string_of_instance ins
   | Con (es1, es2) ->  "("^string_of_es es1 ^ " . " ^ string_of_es es2^")"
   | Kleene esIn -> "(" ^ string_of_es esIn ^ ")*" 
+  | Omega esIn -> "(" ^ string_of_es esIn ^ ")w" 
   | Ntimed (esIn, n) ->"(" ^ string_of_es esIn ^ ")" ^ string_of_int n 
   | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
   ;;
@@ -216,6 +217,30 @@ let rec checkHasFalse ss : bool =
 | x::xs -> if oneOfFalse x xs then true else checkHasFalse xs 
 ;;
 
+let superSetOf (bigger:instance) (smaller:instance) :bool = 
+  let rec helper li cur = 
+    match li with 
+      [] -> false 
+    | x::xs -> if compareSignal x cur then true else helper xs cur
+  in List.fold_left (fun acc a -> acc && helper bigger a ) true smaller ;;
+
+
+let rec compareES es1 es2 : bool = 
+  match (es1, es2) with 
+  | (Bot, Bot) -> true 
+  | (Emp, Emp) -> true 
+  | (Instance ins1, Instance ins2) -> superSetOf ins1 ins2 && superSetOf ins2 ins1
+  | ( Kleene es1, Kleene es2) -> compareES es1 es2
+  | ( Omega es1, Omega es2) -> compareES es1 es2
+  | (Con (es1L, es1R), Con (es2L, es2R)) -> 
+    if (compareES es1L es2L) == false then false
+    else (compareES es1R es2R)
+  | (Disj (es1L, es1R), Disj (es2L, es2R)) -> 
+      if ((compareES es1L es2L) && (compareES es1R es2R)) then true 
+      else ((compareES es1L es2R) && (compareES es1R es2L))
+  | _ -> false 
+  ;;
+
 
 
 let rec oneOf (sig_:signal) ss : bool =
@@ -232,18 +257,22 @@ let rec deleteRedundent sl : signal list =
   | x::xs -> if oneOf x xs then deleteRedundent xs else List.append [x] (deleteRedundent xs)
 
   ;;
+
+let rec nullable (es:es):bool = 
+  match es with 
+    Bot -> false 
+  | Emp -> true
+  | Instance _  -> false 
+  | Con (es1, es2) -> nullable es1 && nullable es2
+  | Disj (es1, es2) -> nullable es1 || nullable es2
+  | Kleene _ -> true  
+  | Omega _ -> false 
+  | Ntimed (_, n) -> n==0 
+  ;;
  
 let rec normalES es: es =
   match es with 
-  | Disj (es1, es2) -> 
-      let norES1 = normalES es1 in 
-      let norES2 = normalES es2 in 
-      (match (norES1, norES2) with 
-      | (Bot, Bot) -> Bot
-      | (Bot, _) -> norES2
-      | (_, Bot) -> norES1
-      | _ ->Disj (norES1, norES2)
-      )
+  
   | Con (es1, es2) -> 
       let norES1 = normalES es1 in 
       let norES2 = normalES es2 in 
@@ -251,41 +280,67 @@ let rec normalES es: es =
       (match (norES1, norES2) with 
         (Emp, _) -> norES2 
       | (_, Emp) -> norES1
+      | (Omega _, _ ) -> norES1
+      | (Kleene (esIn1), Kleene (esIn2)) -> 
+          if compareES esIn1 esIn2 == true then norES2
+          else Con (norES1, norES2)
+      | (Kleene (esIn1), Con (Kleene (esIn2), es2)) -> 
+          if compareES esIn1 esIn2 == true then norES2
+          else Con (norES1, norES2) 
+      | (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
+      | (Disj (or1, or2), es2) -> Disj(Con(or1, es2), Con(or2, es2))
+      | (es1, Disj (or1, or2)) -> Disj(Con(es1, or1), Con(es1, or2))
+
       | (Bot, _) -> Bot 
       | (_ , Bot) -> Bot 
-      | (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
-      | (Ntimed _ , _) -> norES1
-      | _ -> Con (norES1, norES2)
+      
+      | _ -> 
+      
+      Con (norES1, norES2)
+      )
+  | Disj (es1, es2) -> 
+      let norES1 = normalES es1 in 
+      let norES2 = normalES es2 in 
+      (match (norES1, norES2) with 
+      | (Bot, Bot) -> Bot
+      | (Bot, _) -> norES2
+      | (_, Bot) -> norES1
+      | (_, Emp) -> if nullable norES1 then norES1 else Disj (norES1, norES2)
+      | (Emp, _) -> if nullable norES2 then norES2 else Disj (norES1, norES2)
+      | (Disj(es1In, es2In), norml_es2 ) ->
+        if compareES norml_es2 (normalES es1In) || compareES norml_es2 (normalES es2In) then Disj((normalES es1In), (normalES es2In))
+        else Disj (Disj((normalES es1In), (normalES es2In)), norml_es2 )
+      | (norml_es2, Disj(es1In, es2In) ) ->
+        if compareES norml_es2 (normalES es1In) || compareES norml_es2 (normalES es2In) then Disj((normalES es1In), (normalES es2In))
+        else Disj (norml_es2, Disj((normalES es1In), (normalES es2In)))
+      | _ ->
+      if compareES norES1 norES2 then norES1
+      else 
+      Disj (norES1, norES2)
       )
   | Instance ss -> 
     let ss1 = deleteRedundent ss in 
     if checkHasFalse (ss1) then  Bot else 
     (Instance ss1)
   | Kleene esIn -> Kleene (normalES esIn)
+  | Omega esIn -> Omega (normalES esIn)
+
   | Ntimed (esIn, n) -> if n==0 then Emp else Ntimed (normalES esIn, n) 
   | _ -> es 
   ;;
 
 
-let rec nallable (es:es):bool = 
-  match es with 
-    Bot -> false 
-  | Emp -> true
-  | Instance _  -> false 
-  | Con (es1, es2) -> nallable es1 && nallable es2
-  | Disj (es1, es2) -> nallable es1 || nallable es2
-  | Kleene _ -> false 
-  | Ntimed (_, n) -> n==0 
-  ;;
+
 
 let rec getFst (es:es) :instance list= 
   match es with 
     Bot -> []
   | Emp -> []
   | Instance ins  -> [ins] 
-  | Con (es1, es2) -> if nallable es1 then append (getFst es1) (getFst es2) else getFst es1
+  | Con (es1, es2) -> if nullable es1 then append (getFst es1) (getFst es2) else getFst es1
   | Disj (es1, es2) -> append (getFst es1) (getFst es2)
   | Kleene esIn -> (getFst esIn) 
+  | Omega esIn -> (getFst esIn) 
   | Ntimed (esIn, n) -> (getFst esIn) 
   ;;
 
@@ -297,12 +352,6 @@ let isBot (es:es):bool =
   
 
 
-let superSetOf (bigger:instance) (smaller:instance) :bool = 
-  let rec helper li cur = 
-    match li with 
-      [] -> false 
-    | x::xs -> if compareSignal x cur then true else helper xs cur
-  in List.fold_left (fun acc a -> acc && helper bigger a ) true smaller ;;
 
 let rec superESOf (bigger:es) (smaller:es) : bool = 
   match (bigger, smaller) with 
@@ -321,8 +370,14 @@ let rec derivative (ins_given: instance) (es:es) : es =
     Bot -> Bot
   | Emp -> Bot
   | Instance ins  -> if superSetOf ins_given ins then Emp else Bot
-  | Con (es1, es2) -> Con (derivative ins_given es1, es2)
+  | Con (es1, es2) -> 
+    let temp = Con (derivative ins_given es1, es2) in 
+    if nullable es1 then Disj (temp, derivative ins_given es2)
+    else temp
+    
   | Disj (es1, es2) -> Disj (derivative ins_given es1, derivative ins_given es2)
   | Kleene esIn -> Con (derivative ins_given esIn, es)
   | Ntimed (esIn, n) -> Con (derivative ins_given esIn, Ntimed (esIn, n-1))
+  | Omega esIn -> Con (derivative ins_given esIn, es)
+
   ;;

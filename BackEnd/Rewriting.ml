@@ -30,11 +30,17 @@ let rec containment (evn: inclusion list) (lhs:es) (rhs:es) : (bool * binary_tre
   let lhs = normalES lhs in 
   let rhs = normalES rhs in 
   let entail = string_of_inclusion lhs rhs in 
-  if nallable lhs == true && nallable rhs==false then (false, Node (entail^ "   [DISPROVE]", []))
+  if nullable lhs == true && nullable rhs==false then (false, Node (entail^ "   [DISPROVE]", []))
   else if isBot lhs then (true, Node (entail^ "   [Bot-LHS]", []))
   else if isBot rhs then (false, Node (entail^ "   [Bot-RHS]", []))
   else if reoccur evn lhs rhs then (true, Node (entail^ "   [Reoccur]", []))
   else 
+  (*match lhs with 
+    Disj (lhs1, lhs2) -> 
+      let (re1, tree1) = containment evn lhs1 rhs in 
+      let (re2, tree2) = containment evn lhs2 rhs in 
+      (re1 && re2, Node (entail^ "   [LHS-DISJ]", [tree1; tree2]))
+  | _ -> *)
     let (fst:instance list) = getFst lhs in 
     let newEvn = append [(lhs, rhs)] evn in 
     let rec helper (acc:binary_tree list) (fst_list:instance list): (bool * binary_tree list) = 
@@ -42,7 +48,7 @@ let rec containment (evn: inclusion list) (lhs:es) (rhs:es) : (bool * binary_tre
         [] -> (true , acc) 
       | a::xs -> 
         let (result, (tree:binary_tree)) =  containment newEvn (derivative a lhs) (derivative a rhs) in 
-        if result == false then (false, acc)
+        if result == false then (false, (tree:: acc))
         else helper (tree:: acc) xs 
       )
     in 

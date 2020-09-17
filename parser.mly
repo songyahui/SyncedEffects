@@ -6,10 +6,10 @@
 %token <int> INTE
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
-%token EOF ENTIL EMPTY DISJ COMMA CONCAT  KLEENE END IN RUN
+%token EOF ENTIL EMPTY DISJ COMMA CONCAT  KLEENE END IN RUN OMEGA
 %token THEN ELSE ABORT WHEN LBRACK RBRACK
 (* LBrackets  RBrackets POWER*)
-%left CONCAT DISJ 
+%left CONCAT DISJ PAR SIMI
 (* %right SIMI PAR *)
 %token FUTURE GLOBAL IMPLY LTLNOT NEXT UNTIL LILAND LILOR 
 %token LSPEC RSPEC ENSURE REQUIRE MODULE COLON INPUT OUTPUT
@@ -69,6 +69,7 @@ es:
 | a = es  DISJ  b=es  {Disj (a, b)}
 | LPAR a = es RPAR KLEENE {Kleene a}
 | LPAR r = es RPAR n = INTE { Ntimed (r, n) }
+| LPAR a = es RPAR OMEGA {Omega a}
 
 
 
@@ -89,10 +90,9 @@ pRog_aux:
 | ABORT p = pRog  WHEN s = VAR {Suspend (p, s)}
 
 pRog:
-| p =pRog_aux {p}
-| LPAR p = pRog RPAR {p}
+| p = pRog_aux {p}
 | p1 = pRog SIMI p2 = pRog{ Seq (p1, p2)}
-| p1 = pRog PAR p2 = pRog { Par (p1, p2)}
+| LPAR p1 = pRog RPAR PAR LPAR p2 = pRog RPAR{ Par (p1, p2)}
 
 (*
 

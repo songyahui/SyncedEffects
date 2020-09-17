@@ -15,6 +15,7 @@ type es = Bot
         | Con of es * es
         | Disj of es * es
         | Kleene of es
+        | Omega of es
         | Ntimed of es * int
 
 type history = es 

@@ -69,6 +69,7 @@ rule token = parse
 | ':' { COLON }
 
 | '*' {KLEENE}
+| 'w' {OMEGA}
 | "<>" {FUTURE}  
 
 | "->" {IMPLY}

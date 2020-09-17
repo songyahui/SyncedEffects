@@ -17,7 +17,7 @@ let () =
     let eeList = Parser.ee Lexer.token (Lexing.from_string line) in
     let result = List.map (fun parm ->  
                             match parm with 
-                              INC (lhs, rhs) -> printReport lhs rhs ) eeList in 
+                             (lhs, rhs) -> printReport lhs rhs ) eeList in 
     let final_result = List.fold_right (fun x acc -> acc  ^ x ^ "\n") ( result) "" in 
     print_string ( (final_result) ^"\n");
     (*

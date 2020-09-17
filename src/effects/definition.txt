@@ -1,1 +1,0 @@
-let a = Instance([], [("A", One); ("B", One); ("C", Zero)]) and b = Instance([], [("A", Zero); ("B", Zero); ("C", One)]) and c = Instance([], [("A", One); ("B", Zero); ("C", Zero)]) and d = Instance([], [("D", One); ("B", Zero); ("C", Zero)]);;
