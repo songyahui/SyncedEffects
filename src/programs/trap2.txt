@@ -1,33 +1,28 @@
-(signal A (signal B (signal C (signal D (signal E (signal F (signal G 
+  module trapTEST:
+  output A,B,C ,D, E, F, G;
 
-(
-(trap 
-  (
+
+/*@
+  require {} 
+  ensure { A, E} . { B, F ,D}
+@*/
+
+
+trap T1 in 
   (emit A;
-    (pause;
-      (emit B;
-        ((exit 0);
-          emit C
-        )
-      )
-    )
-  )
+  pause;
+  emit B;
+  exit T1;
+  emit C)
   ||
   (emit E;
-    (pause;
-      (emit F;
-        (pause;
-          emit G
-        )
-      )
-    )
-  )
-)
-);
+  pause;
+  emit F;
+  pause;
+  emit G)
+end trap;
 emit D
-)
 
 
 
-))))
-)))
+  end module

@@ -90,8 +90,9 @@ pRog_aux:
 
 pRog:
 | p =pRog_aux {p}
-| p1 = pRog_aux SIMI p2 = pRog{ Seq (p1, p2)}
-| p1 = pRog_aux PAR p2 = pRog { Par (p1, p2)}
+| LPAR p = pRog RPAR {p}
+| p1 = pRog SIMI p2 = pRog{ Seq (p1, p2)}
+| p1 = pRog PAR p2 = pRog { Par (p1, p2)}
 
 (*
 

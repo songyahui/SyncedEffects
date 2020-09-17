@@ -254,6 +254,7 @@ let rec normalES es: es =
       | (Bot, _) -> Bot 
       | (_ , Bot) -> Bot 
       | (Con(es1, es2), es3) -> normalES (Con (normalES es1, normalES (Con(es2, es3)) ))
+      | (Ntimed _ , _) -> norES1
       | _ -> Con (norES1, norES2)
       )
   | Instance ss -> 
@@ -265,3 +266,63 @@ let rec normalES es: es =
   | _ -> es 
   ;;
 
+
+let rec nallable (es:es):bool = 
+  match es with 
+    Bot -> false 
+  | Emp -> true
+  | Instance _  -> false 
+  | Con (es1, es2) -> nallable es1 && nallable es2
+  | Disj (es1, es2) -> nallable es1 || nallable es2
+  | Kleene _ -> false 
+  | Ntimed (_, n) -> n==0 
+  ;;
+
+let rec getFst (es:es) :instance list= 
+  match es with 
+    Bot -> []
+  | Emp -> []
+  | Instance ins  -> [ins] 
+  | Con (es1, es2) -> if nallable es1 then append (getFst es1) (getFst es2) else getFst es1
+  | Disj (es1, es2) -> append (getFst es1) (getFst es2)
+  | Kleene esIn -> (getFst esIn) 
+  | Ntimed (esIn, n) -> (getFst esIn) 
+  ;;
+
+let isBot (es:es):bool = 
+  match es with 
+    Bot -> true 
+    |_ -> false 
+    ;; 
+  
+
+
+let superSetOf (bigger:instance) (smaller:instance) :bool = 
+  let rec helper li cur = 
+    match li with 
+      [] -> false 
+    | x::xs -> if compareSignal x cur then true else helper xs cur
+  in List.fold_left (fun acc a -> acc && helper bigger a ) true smaller ;;
+
+let rec superESOf (bigger:es) (smaller:es) : bool = 
+  match (bigger, smaller) with 
+  | (Instance ins1, Instance ins2) -> superSetOf ins1 ins2
+  | (Con (es1, es2), Con(es3, es4)) -> superESOf es1 es3 && superESOf es2 es4
+  | (Disj (es1, es2), Disj(es3, es4))-> (superESOf es1 es3 && superESOf es2 es4) || (superESOf es1 es4 && superESOf es2 es3)
+  | (Kleene es1, Kleene es2) -> superESOf es1 es2
+  | (Ntimed (es1, n1), Ntimed(es2, n2)) -> superESOf es1 es2 && n1 == n2
+  | (Disj (es1, es2), Con _)-> (superESOf es1 smaller ) || (superESOf es2 smaller)
+  | _ -> false 
+  ;; 
+
+
+let rec derivative (ins_given: instance) (es:es) : es = 
+  match es with 
+    Bot -> Bot
+  | Emp -> Bot
+  | Instance ins  -> if superSetOf ins_given ins then Emp else Bot
+  | Con (es1, es2) -> Con (derivative ins_given es1, es2)
+  | Disj (es1, es2) -> Disj (derivative ins_given es1, derivative ins_given es2)
+  | Kleene esIn -> Con (derivative ins_given esIn, es)
+  | Ntimed (esIn, n) -> Con (derivative ins_given esIn, Ntimed (esIn, n-1))
+  ;;

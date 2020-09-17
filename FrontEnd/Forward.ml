@@ -59,11 +59,14 @@ let rec es_To_state (es:es) :prog_states =
 
 
 let rec state_To_es (state:prog_states):es = 
+  normalES (
   List.fold_left (fun acc (a, b, trap) -> 
   match b with 
     None -> Disj (acc, a)
   | Some b -> 
-  Disj (acc, (Con (a, Instance b)))) Bot state;;
+  Disj (acc, (Con (a, Instance b)))) Bot state
+  )
+  ;;
   
 let rec addToHead (ins: instance) (es:es) :es = 
   match es with
@@ -78,6 +81,13 @@ let rec addToHead (ins: instance) (es:es) :es =
 let make_nothing (evn: string list) : signal list = 
   List.map (fun a -> (Zero a) ) evn 
   ;;
+
+let rec zip a b =
+  match (a,b) with
+    ([],[]) -> []
+    | ([],n::ns)-> []
+    | (n::ns,[]) -> []
+    | (k::ks, h::hs) -> (k,h)::zip ks hs ;;
 
 
 let rec split_es_head_tail (es:es) :(instance * es) list = 
@@ -103,6 +113,64 @@ let isEmp xs : bool =
   match xs with 
     [] -> true 
   | _ -> false 
+;;
+
+let rec paralleEffLong es1 es2 : es = 
+  let norES1 = normalES es1 in 
+  let norES2 = normalES es2 in 
+  let fst1 = getFst norES1 in
+  let fst2 = getFst norES2 in 
+  let headcom = zip fst1 fst2 in 
+
+  let listES =  List.map (fun (f1, f2) -> 
+  let der1 = derivative f1 norES1 in 
+  let der2 = derivative f2 norES2 in 
+  match (der1, der2) with 
+    (Emp, _) -> der2
+  | (_, Emp) -> der1
+  | _ -> Con (Instance (append f1 f2), paralleEffLong der1 der2)) headcom
+  in
+  normalES (
+  List.fold_left (fun acc a -> Disj (acc, a)) Bot listES
+  )
+
+   ;;
+
+let rec paralleEffShort es1 es2 : es = 
+  let norES1 = normalES es1 in 
+  let norES2 = normalES es2 in
+
+  let fst1 = getFst norES1 in
+  let fst2 = getFst norES2 in 
+  let headcom = zip fst1 fst2 in 
+
+  let listES =  List.map (
+  fun (f1, f2) -> 
+    let der1 = normalES (derivative f1 norES1) in 
+    let der2 = normalES (derivative f2 norES2) in 
+
+
+    (match (der1, der2) with 
+    | (Emp, _) -> Instance (append f1 f2)
+    | (_, Emp) -> Instance (append f1 f2)
+    | (der1, der2) -> 
+      Con (Instance (append f1 f2), paralleEffShort der1 der2))
+  ) headcom
+  
+  in
+  normalES (
+  List.fold_left (fun acc a -> Disj (acc, a)) Bot listES
+  )
+ ;;
+
+let rec lengthES es : int =
+  match es with  
+| Emp -> 0
+| Instance _ -> 1 
+| Con (es1, es2) -> lengthES es1 + lengthES es2
+
+| Ntimed (es1, n) -> (lengthES es1) * n
+| _ -> raise (Foo "getlength error ")
 ;;
 
 let equla_List_of_State left right : bool= 
@@ -275,7 +343,33 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
         Some _ -> (his, cur, trap)
       | None -> (his, cur, Some name)
       )current
-  | Par _  -> raise (Foo "not there forward")
+  | Par (p1, p2)  -> 
+      List.flatten (List.map (fun (his, cur, trap)-> 
+      match trap with 
+        Some _ -> [(his, cur, trap)]
+      | None -> 
+          let eff1 = forward evn [(his, cur, trap)] p1 original full in 
+          let eff2 = forward evn [(his, cur, trap)] p2 original full in 
+          let combinations = zip eff1 eff2 in           
+
+          List.flatten (List.map (fun (trace1 , trace2) -> 
+          let (his1, cur1, trap1) = trace1 in 
+          let (his2, cur2, trap2) = trace2 in 
+          match (trap1, trap2) with 
+            (None, None) -> let (combine:es) = paralleEffLong  (state_To_es [trace1]) (state_To_es [trace2])  in 
+                            es_To_state combine
+          | (Some t1, None) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
+                               List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
+          | (None, Some t2) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
+                               List.map (fun (a, b, c) -> (a, b, Some t2)) (es_To_state combine)
+          | (Some t1, Some t2) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
+              let lengthhis1 = lengthES his1  in
+              let lengthhis2 = lengthES his2  in
+              if lengthhis1 >  lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
+              else if lengthhis1 < lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t2)) (es_To_state combine)
+              else List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
+          ) combinations)
+      )current)
   | _ -> raise (Foo "not there forward")
   ;;
 
