@@ -51,7 +51,7 @@ rule token = parse
 | "else" {ELSE}
 | "abort" {ABORT} 
 | "when" {WHEN}
-
+| 'w' {OMEGA}
 | '(' { LPAR }
 | ')' { RPAR }
 | '{' { LBRACK  }
@@ -67,9 +67,9 @@ rule token = parse
 | "\\/" {DISJ}
 | ',' { COMMA }
 | ':' { COLON }
-
+| '^' { POWER }
 | '*' {KLEENE}
-| 'w' {OMEGA}
+
 | "<>" {FUTURE}  
 
 | "->" {IMPLY}
@@ -84,7 +84,7 @@ rule token = parse
 
 (*
 
-| '^' { POWER }
+
 | '[' { LBrackets }
 | ']' { RBrackets }
 | "TRUE" { TRUE }

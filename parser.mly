@@ -7,7 +7,7 @@
 %token NOTHING PAUSE PAR  LOOP SIGNAL LPAR RPAR EMIT PRESENT TRAP EXIT SIMI
 
 %token EOF ENTIL EMPTY DISJ COMMA CONCAT  KLEENE END IN RUN OMEGA
-%token THEN ELSE ABORT WHEN LBRACK RBRACK
+%token THEN ELSE ABORT WHEN LBRACK RBRACK POWER
 (* LBrackets  RBrackets POWER*)
 %left CONCAT DISJ PAR SIMI
 (* %right SIMI PAR *)
@@ -69,7 +69,7 @@ es:
 | a = es  DISJ  b=es  {Disj (a, b)}
 | LPAR a = es RPAR KLEENE {Kleene a}
 | LPAR r = es RPAR n = INTE { Ntimed (r, n) }
-| LPAR a = es RPAR OMEGA {Omega a}
+| LPAR a = es RPAR POWER OMEGA {Omega a}
 
 
 

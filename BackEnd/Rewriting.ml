@@ -12,16 +12,6 @@ open Sys
 
 
 
-let rec reoccur (evn: inclusion list) (lhs:es) (rhs:es) :bool = 
-    match evn with
-      [] -> false 
-    | (lhs', rhs')::xs -> 
-      if superESOf rhs' rhs && superESOf lhs lhs' 
-      then true 
-      else reoccur xs lhs rhs
-;;
-
-
 
 
 

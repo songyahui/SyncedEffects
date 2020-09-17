@@ -359,6 +359,8 @@ let rec superESOf (bigger:es) (smaller:es) : bool =
   | (Con (es1, es2), Con(es3, es4)) -> superESOf es1 es3 && superESOf es2 es4
   | (Disj (es1, es2), Disj(es3, es4))-> (superESOf es1 es3 && superESOf es2 es4) || (superESOf es1 es4 && superESOf es2 es3)
   | (Kleene es1, Kleene es2) -> superESOf es1 es2
+  | (Omega es1, Omega es2) -> superESOf es1 es2
+
   | (Ntimed (es1, n1), Ntimed(es2, n2)) -> superESOf es1 es2 && n1 == n2
   | (Disj (es1, es2), Con _)-> (superESOf es1 smaller ) || (superESOf es2 smaller)
   | _ -> false 
@@ -381,3 +383,14 @@ let rec derivative (ins_given: instance) (es:es) : es =
   | Omega esIn -> Con (derivative ins_given esIn, es)
 
   ;;
+
+
+let rec reoccur (evn: inclusion list) (lhs:es) (rhs:es) :bool = 
+    match evn with
+      [] -> false 
+    | (lhs', rhs')::xs -> 
+      if superESOf rhs' rhs && superESOf lhs lhs' 
+      then true 
+      else reoccur xs lhs rhs
+;;
+

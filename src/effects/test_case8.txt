@@ -1,1 +1,0 @@
-let lhs = [a] and rhs = [Con(Kleene(Any), a)];;
