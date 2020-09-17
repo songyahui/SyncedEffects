@@ -7,17 +7,17 @@
 @*/
 
 trap T1 in 
-  emit A;
+  (emit A;
   pause;
   emit B;
   exit T1;
-  emit C
+  emit C)
   ||
-  emit E;
+  (emit E;
   pause;
   exit T;
   pause;
-  emit G
+  emit G)
 end trap;
 emit D
 
