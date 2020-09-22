@@ -1,7 +1,18 @@
-(signal SL1 (signal SL2
-(
-  (present SL1 emit SL2 nothing)
+  module correctness:
+  output A,B,C ,D, E, F, G;
+
+
+signal SL1 in 
+signal SL2 in
+
+
+(present SL1 then emit SL2 else nothing end present )
 ||
-  ((present SL2 pause nothing);
-    emit SL1)
-)))
+(present SL2 then pause else nothing end present ;
+emit SL1)
+
+
+end signal
+end signal
+
+  end module

@@ -1,7 +1,23 @@
-/*
-    ensure ([S2 ]^*)
-*/
 
 
-(signal S
-  (present S emit S nothing ))
+
+
+
+  module correctness:
+  output A,B,C ,D, E, F, G;
+
+
+
+  /*@
+  require {} 
+  ensure ({S2})* 
+  @*/
+
+signal S in 
+ present S then emit S   else nothing end present
+
+end signal
+
+
+
+  end module

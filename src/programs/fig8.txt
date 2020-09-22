@@ -1,4 +1,14 @@
-(signal S1
+  module correctness:
+  output A,B,C ,D, E, F, G;
 
-(present S1 nothing (emit S1))
-)
+
+signal S1 in 
+
+present S1 then nothing else emit S1 end present
+
+
+end signal
+
+
+
+  end module
