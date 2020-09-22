@@ -7,7 +7,16 @@ type signal = One of var | Zero of var
 (*signal set*)
 type instance = signal list ;;
 
-(*type event  = Instance of instance   | Not of instance *)
+type p_instance = signal list * signal list ;;
+
+type p_es = PBot 
+        | PEmp 
+        | PInstance of p_instance 
+        | PCon of p_es * p_es
+        | PDisj of p_es * p_es
+        | PKleene of p_es
+        | POmega of p_es
+        | PNtimed of p_es * int
 
 type es = Bot 
         | Emp 
@@ -17,6 +26,8 @@ type es = Bot
         | Kleene of es
         | Omega of es
         | Ntimed of es * int
+
+
 
 type history = es 
 

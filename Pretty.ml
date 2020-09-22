@@ -394,3 +394,27 @@ let rec reoccur (evn: inclusion list) (lhs:es) (rhs:es) :bool =
       else reoccur xs lhs rhs
 ;;
 
+let rec esToPes (es:es):p_es =
+  match es with 
+    Bot -> PBot
+  | Emp -> PEmp
+  | Instance ins -> PInstance ([], ins)
+  | Con (es1, es2) -> PCon (esToPes es1, esToPes es2)
+  | Disj (es1, es2) ->PDisj (esToPes es1, esToPes es2) 
+  | Kleene es1 -> PKleene (esToPes es1)
+  | Omega es1 -> POmega (esToPes es1)
+  | Ntimed (es1, n) -> PNtimed (esToPes es1, n)
+  ;;
+
+let rec pesToEs (p_es:p_es): es=
+  match p_es with 
+    PBot -> Bot
+  | PEmp -> Emp
+  | PInstance (_, ins) -> Instance ins
+  | PCon (es1, es2) -> Con (pesToEs es1, pesToEs es2)
+  | PDisj (es1, es2) -> Disj (pesToEs es1, pesToEs es2) 
+  | PKleene es1 -> Kleene (pesToEs es1)
+  | POmega es1 -> Omega (pesToEs es1)
+  | PNtimed (es1, n) -> Ntimed (pesToEs es1, n)
+  ;;
+
