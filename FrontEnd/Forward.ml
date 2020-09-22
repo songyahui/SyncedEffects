@@ -37,44 +37,47 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
 
   
 
-let rec es_To_state (es:es) :prog_states = 
+let rec p_es_To_state (es:p_es) :prog_states = 
   match es with 
-  | Emp -> [(Emp, None, None)]
-  | Instance ins -> [(Emp, Some ins, None)]
-  | Con (es1, es2) -> 
-    let his_cur_list = es_To_state es2 in 
-    List.map (fun (his,cur,trap) -> (Con (es1, his),cur, trap)) his_cur_list
+  | PEmp -> [(PEmp, None, None)]
+  | PInstance ins -> [(PEmp, Some ins, None)]
+  | PCon (es1, es2) -> 
+    let his_cur_list = p_es_To_state es2 in 
+    List.map (fun (his,cur,trap) -> (PCon (es1, his),cur, trap)) his_cur_list
     
-  | Disj (es1, es2) -> List.append (es_To_state es1) (es_To_state es2)
-  | Kleene esIn -> 
-    let his_cur_list = es_To_state esIn in 
-    List.map (fun (his,cur, trap) -> (Con (es, his), cur, trap)) his_cur_list
-  | Ntimed (esIn, n) ->
+  | PDisj (es1, es2) -> List.append (p_es_To_state es1) (p_es_To_state es2)
+  | PKleene esIn -> 
+    let his_cur_list = p_es_To_state esIn in 
+    List.map (fun (his,cur, trap) -> (PCon (es, his), cur, trap)) his_cur_list
+  | PNtimed (esIn, n) ->
     assert (n>1);
-    let his_cur_list = es_To_state esIn in 
-    List.map (fun (his,cur, trap) -> (Con (Ntimed (esIn, n-1), his), cur, trap)) his_cur_list
+    let his_cur_list = p_es_To_state esIn in 
+    List.map (fun (his,cur, trap) -> (PCon (PNtimed (esIn, n-1), his), cur, trap)) his_cur_list
 
   | _ -> raise (Foo "there is a EMP OR BOT HERE")
   ;;
 
 
-let rec state_To_es (state:prog_states):es = 
-  normalES (
+let rec state_To_p_es (state:prog_states):p_es = 
+  normalPES (
   List.fold_left (fun acc (a, b, trap) -> 
   match b with 
-    None -> Disj (acc, a)
+    None -> PDisj (acc, a)
   | Some b -> 
-  Disj (acc, (Con (a, Instance b)))) Bot state
+  PDisj (acc, (PCon (a, PInstance b)))) PBot state
   )
   ;;
+
+let appendSL ((a, b):p_instance) ((aa, bb):p_instance) :p_instance = 
+  (List.append a aa,  List.append b bb);;
   
-let rec addToHead (ins: instance) (es:es) :es = 
+let rec addToHead (ins: p_instance) (es:p_es) :p_es = 
   match es with
-  | Instance ins1 ->  Instance (List.append ins1 ins )
-  | Con (es1, es2) -> Con (addToHead ins es1, es2) 
-  | Disj (es1, es2) -> Disj (addToHead  ins es1, addToHead ins es2)
-  | Kleene esIn -> Con (addToHead ins esIn, es)
-  | Ntimed (esIn, n) -> Con (addToHead ins esIn, Ntimed (esIn, n-1))
+  | PInstance ins1 ->  PInstance (appendSL ins ins1)
+  | PCon (es1, es2) -> PCon (addToHead ins es1, es2) 
+  | PDisj (es1, es2) -> PDisj (addToHead  ins es1, addToHead ins es2)
+  | PKleene esIn -> PCon (addToHead ins esIn, es)
+  | PNtimed (esIn, n) -> PCon (addToHead ins esIn, PNtimed (esIn, n-1))
   | _ -> es 
   ;;
 
@@ -90,23 +93,23 @@ let rec zip a b =
     | (k::ks, h::hs) -> (k,h)::zip ks hs ;;
 
 
-let rec split_es_head_tail (es:es) :(instance * es) list = 
+let rec split_p_es_head_tail (es:p_es) :(p_instance * p_es) list = 
   match es with 
-  | Instance ins -> [(ins, Emp)]
-  | Con (es1, es2) -> 
-    let head_tail_list = split_es_head_tail es1 in 
-    List.map (fun (head,tail) -> (head, Con (tail, es2))) head_tail_list
+  | PInstance ins -> [(ins, PEmp)]
+  | PCon (es1, es2) -> 
+    let head_tail_list = split_p_es_head_tail es1 in 
+    List.map (fun (head,tail) -> (head, PCon (tail, es2))) head_tail_list
     
-  | Disj (es1, es2) -> List.append (split_es_head_tail es1) (split_es_head_tail es2)
-  | Kleene esIn -> 
-    let head_tail_list = split_es_head_tail esIn in 
-    List.map (fun (head,tail) -> (head, Con (tail, es))) head_tail_list
-  | Ntimed (esIn, n) ->
+  | PDisj (es1, es2) -> List.append (split_p_es_head_tail es1) (split_p_es_head_tail es2)
+  | PKleene esIn -> 
+    let head_tail_list = split_p_es_head_tail esIn in 
+    List.map (fun (head,tail) -> (head, PCon (tail, es))) head_tail_list
+  | PNtimed (esIn, n) ->
     assert (n>1);
-    let head_tail_list = split_es_head_tail esIn in 
-    List.map (fun (head,tail) -> (head, Con (tail, Ntimed (esIn, n-1)))) head_tail_list
+    let head_tail_list = split_p_es_head_tail esIn in 
+    List.map (fun (head,tail) -> (head, PCon (tail, PNtimed (esIn, n-1)))) head_tail_list
 
-  | _ -> raise (Foo "there is a EMP OR BOT HERE in split_es_head_tail")
+  | _ -> raise (Foo "there is a EMP OR BOT HERE in split_p_es_head_tail")
   ;;
 
 let isEmp xs : bool = 
@@ -115,61 +118,61 @@ let isEmp xs : bool =
   | _ -> false 
 ;;
 
-let rec paralleEffLong es1 es2 : es = 
-  let norES1 = normalES es1 in 
-  let norES2 = normalES es2 in 
-  let fst1 = getFst norES1 in
-  let fst2 = getFst norES2 in 
+let rec paralleEffLong es1 es2 : p_es = 
+  let norES1 = normalPES es1 in 
+  let norES2 = normalPES es2 in 
+  let fst1 = getFstPes norES1 in
+  let fst2 = getFstPes norES2 in 
   let headcom = zip fst1 fst2 in 
 
-  let listES =  List.map (fun (f1, f2) -> 
-  let der1 = derivative f1 norES1 in 
-  let der2 = derivative f2 norES2 in 
+  let listPES =  List.map (fun (f1, f2) -> 
+  let der1 = derivativePes f1 norES1 in 
+  let der2 = derivativePes f2 norES2 in 
   match (der1, der2) with 
-    (Emp, _) -> der2
-  | (_, Emp) -> der1
-  | _ -> Con (Instance (append f1 f2), paralleEffLong der1 der2)) headcom
+    (PEmp, _) -> der2
+  | (_, PEmp) -> der1
+  | _ -> PCon (PInstance (appendSL f1 f2), paralleEffLong der1 der2)) headcom
   in
-  normalES (
-  List.fold_left (fun acc a -> Disj (acc, a)) Bot listES
+  normalPES (
+  List.fold_left (fun acc a -> PDisj (acc, a)) PBot listPES
   )
 
    ;;
 
-let rec paralleEffShort es1 es2 : es = 
-  let norES1 = normalES es1 in 
-  let norES2 = normalES es2 in
-
-  let fst1 = getFst norES1 in
-  let fst2 = getFst norES2 in 
+let rec paralleEffShort es1 es2 : p_es = 
+  let norES1 = normalPES es1 in 
+  let norES2 = normalPES es2 in 
+  let fst1 = getFstPes norES1 in
+  let fst2 = getFstPes norES2 in 
   let headcom = zip fst1 fst2 in 
+
 
   let listES =  List.map (
   fun (f1, f2) -> 
-    let der1 = normalES (derivative f1 norES1) in 
-    let der2 = normalES (derivative f2 norES2) in 
+    let der1 = normalPES (derivativePes f1 norES1) in 
+    let der2 = normalPES (derivativePes f2 norES2) in 
 
 
     (match (der1, der2) with 
-    | (Emp, _) -> Instance (append f1 f2)
-    | (_, Emp) -> Instance (append f1 f2)
+    | (PEmp, _) -> PInstance (appendSL f1 f2)
+    | (_, PEmp) -> PInstance (appendSL f1 f2)
     | (der1, der2) -> 
-      Con (Instance (append f1 f2), paralleEffShort der1 der2))
+      PCon (PInstance (appendSL f1 f2), paralleEffShort der1 der2))
   ) headcom
   
   in
-  normalES (
-  List.fold_left (fun acc a -> Disj (acc, a)) Bot listES
+  normalPES (
+  List.fold_left (fun acc a -> PDisj (acc, a)) PBot listES
   )
  ;;
 
-let rec lengthES es : int =
+let rec lengthPES es : int =
   match es with  
-| Emp -> 0
-| Instance _ -> 1 
-| Con (es1, es2) -> lengthES es1 + lengthES es2
+| PEmp -> 0
+| PInstance _ -> 1 
+| PCon (es1, es2) -> lengthPES es1 + lengthPES es2
 
-| Ntimed (es1, n) -> (lengthES es1) * n
+| PNtimed (es1, n) -> (lengthPES es1) * n
 | _ -> raise (Foo "getlength error ")
 ;;
 
@@ -189,7 +192,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | None -> 
           (match curr with 
             None -> raise (Foo "Emit doesn't work...")
-          | Some curr -> (his, Some (List.append [(One s)] curr), trap )
+          | Some (path, curr) -> (his, Some (path, (List.append [(One s)] curr)), trap )
           )
       )) current
   | Pause -> 
@@ -197,10 +200,10 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       match trap with
       | Some name -> (his, curr, trap)
       | None -> 
-      let newCurr = Some [] in 
+      let newCurr = Some ([], []) in 
       (match curr with 
         None -> (his, newCurr, trap)
-      | Some curr -> let newHis = Con (his, Instance curr) in 
+      | Some (path, curr) -> let newHis = PCon (his, PInstance (path, curr)) in 
       (newHis, newCurr, trap)
       )
     in List.map (helper) current
@@ -227,7 +230,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | Loop prog ->
      (*forward evn current prog original full 
      *)
-     List.flatten (List.map (fun (his, curr, trap) -> 
+     List.flatten (List.map (fun ((his:p_es), curr, trap) -> 
       match trap with 
       | Some name  -> [(his, curr, trap)]
       | None ->
@@ -236,27 +239,27 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | Some curr1 ->
         
        (* by cases *)
-        let newState_list = forward evn [(Emp, Some [], trap )] prog original full in
+        let newState_list = forward evn [(PEmp, Some ([], []), trap )] prog original full in
         List.flatten (
           List.map (fun (new_his, new_curr, new_trap) ->
           match new_trap with 
-          | Some name -> [(Con (his, addToHead curr1 new_his), new_curr, new_trap)]
+          | Some name -> [(PCon (his, addToHead curr1 new_his), new_curr, new_trap)]
           | None -> 
-          let new_his = normalES new_his in 
+          let new_his = normalPES new_his in 
           match new_curr with 
             None -> raise (Foo "something wrong inside loop")
-          | Some new_curr1 -> 
-            let head_tail_list = split_es_head_tail (normalES new_his) in 
-            List.map (fun (head, tail) ->
+          | Some (new_p, new_curr1) -> 
+            let head_tail_list = split_p_es_head_tail (normalPES new_his) in 
+            List.map (fun (((p, head):p_instance), (tail:p_es)) ->
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
-              (true, true) -> (Con (his, Con (Instance curr1, Kleene (Con (tail, Instance head)))), None, None)
+              (true, true) -> (PCon (his, PCon (PInstance curr1, PKleene (PCon (tail, PInstance (p, head))))), None, None)
               (*右边有pause, his.(curr+head).(tail.head)^* *)
-            | (false, true) ->(Con (his, Con (Instance (append curr1 head), Kleene (Con (tail, Instance head)))), None, None)
+            | (false, true) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), PKleene (PCon (tail, PInstance (p, head))))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
-            | (true, false) ->(Con (his, Con (Instance curr1, Kleene (Con (tail, Instance new_curr1)))), None, None)
+            | (true, false) ->(PCon (his, PCon (PInstance curr1, PKleene (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
-            | (false, false) ->(Con (his, Con (Instance (append curr1 head), Kleene (addToHead new_curr1 new_his))), None, None)
+            | (false, false) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), PKleene (addToHead (new_p, new_curr1) new_his))), None, None)
             ) head_tail_list
           ) newState_list
         )
@@ -278,10 +281,10 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | None -> 
           match curr with 
           | None -> [(his, None, trap)]
-          | Some cur -> 
+          | Some (path, cur) -> 
             (
-            let eff1 = forward evn [(his, Some (List.append [(One s)] cur ), trap)] p1 original full in 
-            let eff2 = forward evn [(his, Some (List.append [(Zero s)] cur ), trap)] p2 original full in 
+            let eff1 = forward evn [(his, Some (List.append [(One s)] path,  cur ), trap)] p1 original full in 
+            let eff2 = forward evn [(his, Some (List.append [(Zero s)] path, cur ), trap)] p2 original full in 
             List.append eff1 eff2
             )
       )
@@ -308,16 +311,17 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
             if String.compare name mn == 0 then x else helper xs 
           in 
           let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
-          let (res, tree) = check_containment (normalES (state_To_es current) ) pre_callee in 
+          let temp = (pesToEs (normalPES (state_To_p_es current) )) in 
+          let (res, tree) = check_containment temp  pre_callee in 
           (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
-          printReport (normalES (state_To_es current) ) pre_callee));
+          printReport temp pre_callee));
           
           if res == false then raise (Foo ("Error when calling "^mn^"\n"))
           else 
           List.flatten (List.map (fun (his, curr, trap) -> 
           match curr with 
             None -> [(his, curr, trap)]
-          | Some curr -> es_To_state (Con (his, (addToHead curr post_callee)))) current)
+          | Some curr -> p_es_To_state (PCon (his, (addToHead curr (esToPes post_callee))))) current)
   
       ) current )
 
@@ -356,18 +360,18 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           let (his1, cur1, trap1) = trace1 in 
           let (his2, cur2, trap2) = trace2 in 
           match (trap1, trap2) with 
-            (None, None) -> let (combine:es) = paralleEffLong  (state_To_es [trace1]) (state_To_es [trace2])  in 
-                            es_To_state combine
-          | (Some t1, None) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
-                               List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
-          | (None, Some t2) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
-                               List.map (fun (a, b, c) -> (a, b, Some t2)) (es_To_state combine)
-          | (Some t1, Some t2) -> let (combine:es) = paralleEffShort  (state_To_es [trace1]) (state_To_es [trace2]) in
-              let lengthhis1 = lengthES his1  in
-              let lengthhis2 = lengthES his2  in
-              if lengthhis1 >  lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
-              else if lengthhis1 < lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t2)) (es_To_state combine)
-              else List.map (fun (a, b, c) -> (a, b, Some t1)) (es_To_state combine)
+            (None, None) -> let (combine:p_es) = paralleEffLong  (state_To_p_es [trace1]) (state_To_p_es [trace2])  in 
+            p_es_To_state combine
+          | (Some t1, None) -> let (combine:p_es) = paralleEffShort  (state_To_p_es [trace1]) (state_To_p_es [trace2]) in
+                               List.map (fun (a, b, c) -> (a, b, Some t1)) (p_es_To_state combine)
+          | (None, Some t2) -> let (combine:p_es) = paralleEffShort  (state_To_p_es [trace1]) (state_To_p_es [trace2]) in
+                               List.map (fun (a, b, c) -> (a, b, Some t2)) (p_es_To_state combine)
+          | (Some t1, Some t2) -> let (combine:p_es) = paralleEffShort  (state_To_p_es [trace1]) (state_To_p_es [trace2]) in
+              let lengthhis1 = lengthPES his1  in
+              let lengthhis2 = lengthPES his2  in
+              if lengthhis1 >  lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t1)) (p_es_To_state combine)
+              else if lengthhis1 < lengthhis2 then List.map (fun (a, b, c) -> (a, b, Some t2)) (p_es_To_state combine)
+              else List.map (fun (a, b, c) -> (a, b, Some t1)) (p_es_To_state combine)
           ) combinations)
       )current)
   | _ -> raise (Foo "not there forward")
@@ -376,8 +380,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
   let (nm, inp_sig, oup_sig, pre,  post, prog) = spec_prog in 
   (*print_string (string_of_prg_state (es_To_state pre));*)
-  let final_states = forward ((*append inp_sig*) oup_sig) (es_To_state pre) prog prog full in 
-  let final_effects =  normalES (state_To_es final_states)  in 
+  let final_states = forward ((*append inp_sig*) oup_sig) (p_es_To_state (esToPes pre)) prog prog full in 
+  let final_effects =  pesToEs (normalPES (state_To_p_es final_states))  in 
   "\n========== Module: "^ nm ^" ==========\n" ^
   "[Pre  Condition] " ^ string_of_es pre ^"\n"^
   "[Post Condition] " ^ string_of_es post ^"\n"^

@@ -27,11 +27,9 @@ type es = Bot
         | Omega of es
         | Ntimed of es * int
 
+type history = p_es 
 
-
-type history = es 
-
-type current = instance
+type current = p_instance
 
 type trace = history *  current option * name option (*exiting from a trap*) 
 

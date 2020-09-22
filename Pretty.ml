@@ -154,6 +154,24 @@ let rec string_of_es (es:es) :string =
   | Disj (es1, es2) -> string_of_es es1 ^ " \\/ " ^ string_of_es es2
   ;;
 
+let string_of_p_instance ((a, b):p_instance) :string = 
+  let temp1 = "{" ^ string_of_sl a ^ " /\\ " in 
+  let temp2 = "" ^ string_of_sl b ^ "}" in 
+  temp1 ^ temp2
+  ;;
+
+let rec string_of_p_es (es:p_es) :string = 
+  match es with 
+    PBot -> "_|_"  
+  | PEmp -> "emp"
+  | PInstance ins  -> string_of_p_instance ins
+  | PCon (es1, es2) ->  "("^string_of_p_es es1 ^ " . " ^ string_of_p_es es2^")"
+  | PKleene esIn -> "(" ^ string_of_p_es esIn ^ ")*" 
+  | POmega esIn -> "(" ^ string_of_p_es esIn ^ ")w" 
+  | PNtimed (esIn, n) ->"(" ^ string_of_p_es esIn ^ ")" ^ string_of_int n 
+  | PDisj (es1, es2) -> string_of_p_es es1 ^ " \\/ " ^ string_of_p_es es2
+  ;;
+
 let string_of_spec_prog (inp:spec_prog):string = 
   let  (nm, ins, outs, pre, post, p) = inp in 
   let body = string_of_prog p in 
@@ -173,11 +191,11 @@ let string_of_inclusion (lhs:es) (rhs:es) :string =
   ;;
 
 let string_of_trace ((his, cur, trap):trace) :string = 
-  "Trace: (" ^ string_of_es his ^")." ^ 
+  "Trace: (" ^ string_of_p_es his ^")." ^ 
   (match cur with 
     None -> ""
   | Some cur -> 
-  string_of_instance cur 
+  string_of_p_instance cur 
   )
   ^"  "^
   (match trap with 
@@ -258,6 +276,20 @@ let rec deleteRedundent sl : signal list =
 
   ;;
 
+  
+
+let rec nullablePes (es:p_es):bool = 
+  match es with 
+    PBot -> false 
+  | PEmp -> true
+  | PInstance _  -> false 
+  | PCon (es1, es2) -> nullablePes es1 && nullablePes es2
+  | PDisj (es1, es2) -> nullablePes es1 || nullablePes es2
+  | PKleene _ -> true  
+  | POmega _ -> false 
+  | PNtimed (_, n) -> n==0 
+  ;;
+
 let rec nullable (es:es):bool = 
   match es with 
     Bot -> false 
@@ -268,6 +300,54 @@ let rec nullable (es:es):bool =
   | Kleene _ -> true  
   | Omega _ -> false 
   | Ntimed (_, n) -> n==0 
+  ;;
+
+let rec normalPES es: p_es =
+  match es with 
+  
+  | PCon (es1, es2) -> 
+      let norES1 = normalPES es1 in 
+      let norES2 = normalPES es2 in 
+      (*print_string (string_of_es norES1);*)
+      (match (norES1, norES2) with 
+        (PEmp, _) -> norES2 
+      | (_, PEmp) -> norES1
+      | (POmega _, _ ) -> norES1
+      | (PCon(es1, es2), es3) -> normalPES (PCon (normalPES es1, normalPES (PCon(es2, es3)) ))
+      | (PDisj (or1, or2), es2) -> PDisj(PCon(or1, es2), PCon(or2, es2))
+      | (es1, PDisj (or1, or2)) -> PDisj(PCon(es1, or1), PCon(es1, or2))
+
+      | (PBot, _) -> PBot 
+      | (_ , PBot) -> PBot 
+      
+      | _ -> 
+      
+      PCon (norES1, norES2)
+      )
+  | PDisj (es1, es2) -> 
+      let norES1 = normalPES es1 in 
+      let norES2 = normalPES es2 in 
+      (match (norES1, norES2) with 
+      | (PBot, PBot) -> PBot
+      | (PBot, _) -> norES2
+      | (_, PBot) -> norES1
+      | (PDisj(es1In, es2In), norml_es2 ) ->
+        PDisj (PDisj((normalPES es1In), (normalPES es2In)), norml_es2 )
+      | (norml_es2, PDisj(es1In, es2In) ) ->
+        PDisj (norml_es2, PDisj((normalPES es1In), (normalPES es2In)))
+      | _ ->
+
+      PDisj (norES1, norES2)
+      )
+  | PInstance (ssp, ss) -> 
+    let (new_a, new_b) = (deleteRedundent ssp, deleteRedundent ss) in 
+    if checkHasFalse (append new_a new_b) then  PBot else 
+    (PInstance (new_a, new_b))
+  | PKleene esIn -> PKleene (normalPES esIn)
+  | POmega esIn -> POmega (normalPES esIn)
+
+  | PNtimed (esIn, n) -> if n==0 then PEmp else PNtimed (normalPES esIn, n) 
+  | _ -> es 
   ;;
  
 let rec normalES es: es =
@@ -330,7 +410,17 @@ let rec normalES es: es =
   ;;
 
 
-
+let rec getFstPes (es:p_es) :p_instance list= 
+  match es with 
+    PBot -> []
+  | PEmp -> []
+  | PInstance ins  -> [ins] 
+  | PCon (es1, es2) -> if nullablePes es1 then append (getFstPes es1) (getFstPes es2) else getFstPes es1
+  | PDisj (es1, es2) -> append (getFstPes es1) (getFstPes es2)
+  | PKleene esIn -> (getFstPes esIn) 
+  | POmega esIn -> (getFstPes esIn) 
+  | PNtimed (esIn, n) -> (getFstPes esIn) 
+  ;;
 
 let rec getFst (es:es) :instance list= 
   match es with 
@@ -366,6 +456,24 @@ let rec superESOf (bigger:es) (smaller:es) : bool =
   | _ -> false 
   ;; 
 
+  
+let rec derivativePes (ins_given: p_instance) (es:p_es) : p_es = 
+  let (a, b) = ins_given in 
+  match es with 
+    PBot -> PBot
+  | PEmp -> PBot
+  | PInstance (aa, bb)  -> if superSetOf b bb then PEmp else PBot
+  | PCon (es1, es2) -> 
+    let temp = PCon (derivativePes ins_given es1, es2) in 
+    if nullablePes es1 then PDisj (temp, derivativePes ins_given es2)
+    else temp
+    
+  | PDisj (es1, es2) -> PDisj (derivativePes ins_given es1, derivativePes ins_given es2)
+  | PKleene esIn -> PCon (derivativePes ins_given esIn, es)
+  | PNtimed (esIn, n) -> PCon (derivativePes ins_given esIn, PNtimed (esIn, n-1))
+  | POmega esIn -> PCon (derivativePes ins_given esIn, es)
+
+  ;;
 
 let rec derivative (ins_given: instance) (es:es) : es = 
   match es with 
