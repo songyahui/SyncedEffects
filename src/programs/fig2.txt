@@ -16,3 +16,19 @@
 
 
   end module
+
+  module correctness:
+  input SL;
+  output A,B,C ,D, E, F, G;
+
+  signal S02 in 
+  signal S01 in 
+  emit SL;
+  present SL 
+     then emit S01
+     else emit S02
+  end present
+  end signal
+  end signal
+
+  end module

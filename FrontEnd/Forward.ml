@@ -10,17 +10,20 @@ open Sys
 
 
 
-let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool = 
+let rec can_fun (s:var) (prog:prog) (origin: prog) (full:spec_prog list) :bool = 
   match prog with 
     Nothing -> false 
   | Pause -> false 
-  | Seq (p1, p2) -> can_fun s p1 full || can_fun s p2 full
-  | Par (p1, p2) -> can_fun s p1 full || can_fun s p2 full
-  | Loop p -> can_fun s p full
-  | Declear (v, p) -> can_fun s p full
+  | Seq (p1, p2) -> can_fun s p1 origin full || can_fun s p2 origin full
+  | Par (p1, p2) -> can_fun s p1 origin full || can_fun s p2 origin full
+  | Loop p -> can_fun s p origin full
+  | Declear (v, p) -> can_fun s p origin full
   | Emit str -> if String.compare str s == 0 then true else false 
-  | Present (v, p1, p2) -> can_fun s p1 full || can_fun s p2 full
-  | Trap (mn, p) -> can_fun s p full
+  | Present (v, p1, p2) -> 
+    (*if can_fun v origin origin full then *)
+     can_fun s p1 origin full || can_fun s p2 origin full 
+     (*else can_fun s p2 origin full*)
+  | Trap (mn, p) -> can_fun s p origin full
   | Exit _ -> false 
   | Run proIn -> 
     let rec helper modules = 
@@ -31,8 +34,8 @@ let rec can_fun (s:var) (prog:prog) (full:spec_prog list) :bool =
         if String.compare name proIn == 0 then x else helper xs 
       in 
       let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
-      can_fun s body_calles full
-  | Suspend (p, s) -> can_fun s p full
+      can_fun s body_calles body_calles full
+  | Suspend (p, s) -> can_fun s p origin full
   ;;
 
   
@@ -68,18 +71,8 @@ let rec state_To_p_es (state:prog_states):p_es =
   )
   ;;
 
-let appendSL ((a, b):p_instance) ((aa, bb):p_instance) :p_instance = 
-  (List.append a aa,  List.append b bb);;
-  
-let rec addToHead (ins: p_instance) (es:p_es) :p_es = 
-  match es with
-  | PInstance ins1 ->  PInstance (appendSL ins ins1)
-  | PCon (es1, es2) -> PCon (addToHead ins es1, es2) 
-  | PDisj (es1, es2) -> PDisj (addToHead  ins es1, addToHead ins es2)
-  | PKleene esIn -> PCon (addToHead ins esIn, es)
-  | PNtimed (esIn, n) -> PCon (addToHead ins esIn, PNtimed (esIn, n-1))
-  | _ -> es 
-  ;;
+
+
 
 let make_nothing (evn: string list) : signal list = 
   List.map (fun a -> (Zero a) ) evn 
@@ -129,8 +122,8 @@ let rec paralleEffLong es1 es2 : p_es =
   let der1 = derivativePes f1 norES1 in 
   let der2 = derivativePes f2 norES2 in 
   match (der1, der2) with 
-    (PEmp, _) -> der2
-  | (_, PEmp) -> der1
+    (PEmp, _) -> PCon (PInstance (appendSL f1 f2), der2)
+  | (_, PEmp) -> PCon (PInstance (appendSL f1 f2), der1)
   | _ -> PCon (PInstance (appendSL f1 f2), paralleEffLong der1 der2)) headcom
   in
   normalPES (
@@ -139,6 +132,7 @@ let rec paralleEffLong es1 es2 : p_es =
 
    ;;
 
+ 
 let rec paralleEffShort es1 es2 : p_es = 
   let norES1 = normalPES es1 in 
   let norES2 = normalPES es2 in 
@@ -180,6 +174,18 @@ let equla_List_of_State left right : bool=
   true
   ;;
 
+let setTrue (xs:signal list) (s:string) :signal list = 
+  let rec helper li acc = 
+  match li with 
+    [] -> acc
+  | x::xxs -> 
+    match x with 
+      (Zero str) -> if String.compare str s == 0 then List.append (List.append xxs acc) [(One s)]
+                    else helper xxs (List.append acc [x])
+    | _ -> helper xxs (List.append acc [x])
+  in helper xs [];
+  ;;
+
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
   match prog with 
     Nothing -> 
@@ -192,7 +198,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | None -> 
           (match curr with 
             None -> raise (Foo "Emit doesn't work...")
-          | Some (path, curr) -> (his, Some (path, (List.append [(One s)] curr)), trap )
+          | Some (path, curr) -> (his, Some (path, setTrue curr s), trap )
           )
       )) current
   | Pause -> 
@@ -200,7 +206,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       match trap with
       | Some name -> (his, curr, trap)
       | None -> 
-      let newCurr = Some ([], []) in 
+      let newCurr = Some ([], make_nothing evn) in 
       (match curr with 
         None -> (his, newCurr, trap)
       | Some (path, curr) -> let newHis = PCon (his, PInstance (path, curr)) in 
@@ -225,7 +231,16 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
     
     
   | Declear (s, progIn ) -> 
-    forward (List.append evn [s]) ( current) progIn original full
+    let newCur = List.map (
+      fun (his, a, trap) ->
+      match a with
+        None -> (his, None, trap) 
+      | Some  (path, curr) ->(his, Some (path, List.append curr [(Zero s)]), trap)
+    )
+    current
+    in 
+    forward (List.append evn [s]) ( newCur) progIn original full
+
 
   | Loop prog ->
      (*forward evn current prog original full 
@@ -282,11 +297,23 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           match curr with 
           | None -> [(his, None, trap)]
           | Some (path, cur) -> 
+
+          if can_fun s original original full then 
+            if mem s evn then 
             (
             let eff1 = forward evn [(his, Some (List.append [(One s)] path,  cur ), trap)] p1 original full in 
             let eff2 = forward evn [(his, Some (List.append [(Zero s)] path, cur ), trap)] p2 original full in 
             List.append eff1 eff2
             )
+            else 
+            (
+            let eff1 = forward evn [(his, Some ( path,  cur ), trap)] p1 original full in 
+            let eff2 = forward evn [(his, Some ( path, cur ), trap)] p2 original full in 
+            List.append eff1 eff2
+            )
+          else (*cannot*)
+            if mem s evn then forward evn [(his, Some (List.append [(Zero s)] path, cur ), trap)] p2 original full 
+            else forward evn [(his, Some ( path, cur ), trap)] p2 original full 
       )
     ) current)
     
@@ -352,9 +379,12 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       match trap with 
         Some _ -> [(his, cur, trap)]
       | None -> 
+
           let eff1 = forward evn [(his, cur, trap)] p1 original full in 
           let eff2 = forward evn [(his, cur, trap)] p2 original full in 
-          let combinations = zip eff1 eff2 in           
+          let combinations = List.flatten (List.map (fun a -> List.map (fun b -> (a, b)) eff2) eff1) in 
+   
+          
 
           List.flatten (List.map (fun (trace1 , trace2) -> 
           let (his1, cur1, trap1) = trace1 in 
@@ -377,20 +407,66 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
   | _ -> raise (Foo "not there forward")
   ;;
 
+let rec definedSignal (xs:signal list) (a:string) : bool = 
+  match xs with 
+    [] -> false 
+  | x::xxs -> 
+            match x with 
+              (One str) -> if String.compare str a  == 0  then true else definedSignal xxs a 
+            | (Zero str) -> if String.compare str a == 0 then true else definedSignal xxs a 
+;;
+
+let initialProgState (inp:string list) (p_states:prog_states): prog_states = 
+  List.map (
+    fun (his, curr, trap) ->
+    match curr with 
+      None -> (his, curr, trap)
+    | Some (path, (curr1:signal list)) -> 
+      let newCurr = List.fold_left (
+        fun acc a -> if definedSignal acc a then acc else List.append acc [(Zero a)]
+      ) curr1 inp in 
+      (his, Some (path, newCurr), trap)
+  )
+  p_states
+
+
+  ;;
+
+
+
 let verifier (spec_prog:spec_prog) (full: spec_prog list):string = 
   let (nm, inp_sig, oup_sig, pre,  post, prog) = spec_prog in 
   (*print_string (string_of_prg_state (es_To_state pre));*)
-  let final_states = forward ((*append inp_sig*) oup_sig) (p_es_To_state (esToPes pre)) prog prog full in 
-  let final_effects =  pesToEs (normalPES (state_To_p_es final_states))  in 
+  let initialState = initialProgState oup_sig (p_es_To_state (esToPes pre)) in 
+
+
+  let final_states = forward ((*append inp_sig*) oup_sig) (initialState) prog prog full in 
+
+  let finel_p_effects = state_To_p_es final_states in 
+
+  let normalFinial_p_eff = normalPES finel_p_effects in 
+  
+  let (res) = logical_correctness inp_sig normalFinial_p_eff in 
+
+  let correct_Eff = normalES (pesToEs normalFinial_p_eff) in 
+
   "\n========== Module: "^ nm ^" ==========\n" ^
+  "\n(* Correctness Checking: "^" *)\n" ^
+  string_of_p_es (normalFinial_p_eff) ^"\n" ^
+
+  (if res == false then "Logical Incorrect!\n"
+  else 
+  "Logical Correct!\n"^
+  "\n(* Temporal verification: "^ "  *)\n" ^
   "[Pre  Condition] " ^ string_of_es pre ^"\n"^
   "[Post Condition] " ^ string_of_es post ^"\n"^
-  "[Final  Effects] " ^ string_of_es final_effects ^"\n\n"^
+  "[Final  Effects] " ^ string_of_es correct_Eff ^"\n\n"^
   (*(string_of_inclusion final_effects post) ^ "\n" ^*)
   "[T.r.s: Verification for Post Condition]\n" ^ 
-  printReport final_effects post
-  
+  printReport correct_Eff post
+  )
   ;;
+
 
 let forward_verification (progs:spec_prog list):string = 
   List.fold_left (fun acc a -> acc ^ "\n\n" ^ verifier a progs) "" progs ;; 

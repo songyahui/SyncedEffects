@@ -100,7 +100,7 @@ let rec string_of_prog (p : prog) : string =
     Nothing -> "nothing"
   | Pause -> "pause"
   | Seq (p1, p2) ->  string_of_prog p1 ^ ";\n" ^ string_of_prog p2 
-  | Par (p1, p2) ->  "(" ^ string_of_prog p1 ^ "\n||\n (" ^ string_of_prog p2 ^" )"
+  | Par (p1, p2) ->  "(" ^ string_of_prog p1 ^ ")\n||\n (" ^ string_of_prog p2 ^" )"
   | Loop pIn -> "loop\n " ^ string_of_prog pIn ^ "\nend loop"
   | Declear (s, prog) -> "signal " ^ s ^ " in \n" ^ string_of_prog prog ^ "\nend signal"
   | Emit s -> "emit " ^ s 
@@ -141,6 +141,8 @@ let string_of_instance (mapping:instance) :string =
   let temp1 = "{" ^ string_of_sl mapping ^ "}" in 
   temp1
   ;;
+
+
 
 let rec string_of_es (es:es) :string = 
   match es with 
@@ -302,6 +304,8 @@ let rec nullable (es:es):bool =
   | Ntimed (_, n) -> n==0 
   ;;
 
+
+
 let rec normalPES es: p_es =
   match es with 
   
@@ -349,6 +353,65 @@ let rec normalPES es: p_es =
   | PNtimed (esIn, n) -> if n==0 then PEmp else PNtimed (normalPES esIn, n) 
   | _ -> es 
   ;;
+
+let rec isNotDisjTrace (p_Es:p_es) : bool =
+  match p_Es with 
+    PBot -> true  
+  | PEmp -> true 
+  | PInstance _ -> true  
+  | PCon (es1, es2) -> isNotDisjTrace es1 || isNotDisjTrace es2
+  | PDisj _ -> false
+  | PKleene (es1) ->isNotDisjTrace es1 
+  | POmega (es1) ->isNotDisjTrace es1 
+  | PNtimed (es1, n) ->isNotDisjTrace es1 
+  ;;
+
+let rec isNotBot  (p_Es:p_es) : bool =
+  match p_Es with
+  PBot -> false 
+| _ -> true 
+;;
+let appendSL ((a, b):p_instance) ((aa, bb):p_instance) :p_instance = 
+  (List.append a aa,  List.append b bb);;
+  
+
+let rec addToHead (ins: p_instance) (es:p_es) :p_es = 
+  match es with
+  | PInstance ins1 ->  PInstance (appendSL ins ins1)
+  | PCon (es1, es2) -> PCon (addToHead ins es1, es2) 
+  | PDisj (es1, es2) -> PDisj (addToHead  ins es1, addToHead ins es2)
+  | PKleene esIn -> PCon (addToHead ins esIn, es)
+  | PNtimed (esIn, n) -> PCon (addToHead ins esIn, PNtimed (esIn, n-1))
+  | _ -> es 
+  ;;
+
+
+let rec logical_correctness inp_sig es: bool =
+  let p_es = normalPES es in 
+  match inp_sig with
+    [] -> isNotDisjTrace p_es && isNotBot p_es
+  | x::xs -> 
+    let temp1 = logical_correctness xs (addToHead ([], [(One x)]) es) in 
+    let temp2 = logical_correctness xs (addToHead ([], [(Zero x)]) es) in 
+    temp1 && temp2
+    
+;;
+
+  (*let helper 
+  match p_es with 
+    PBot -> PBot 
+  | PEmp -> PEmp
+  | PInstance (path, ins)  ->  
+  let (new_a, new_b) = (deleteRedundent path, deleteRedundent ins) in 
+  if checkHasFalse (append new_a new_b) then  PBot else 
+  (PInstance (new_a, append new_a new_b))
+  | PCon (es1, es2) -> PCon (logical_correctness es1, logical_correctness es2)
+  | PDisj (es1, es2) -> PDisj (logical_correctness es1, logical_correctness es2) 
+  | PKleene (es1 )-> PKleene (logical_correctness es1 )  
+  | POmega es1 -> POmega (logical_correctness es1) 
+  | PNtimed (es1, n) -> PNtimed (logical_correctness es1, n)
+  *)
+  ;; 
  
 let rec normalES es: es =
   match es with 

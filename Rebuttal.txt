@@ -4,6 +4,7 @@ Thank you for the efforts reviewing this paper. Here is our response for your va
 shutdown from the school and many difficulties caused by the pandemic.
 To make it up, we present the implementation anonymously on GitHub, offering some execution examples: 
 https://github.com/APLAS-20-Sub-14/SyncedEffects_ForReview. 
+https://github.com/ForPaperReview/SyncedEffects_ForReview.git
 
 2) As mentioned in sections 1 and 6, reasoning about imperative synchronous languages such as Esterel 
 is useful because (i) it is being used in many reactive programs. One of them is the language Hiphop.js 
