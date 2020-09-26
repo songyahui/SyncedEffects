@@ -1,0 +1,17 @@
+
+
+
+  module loopTEST:
+  output A,B, C;
+
+  /*@
+  require {} 
+  ensure {A} . ({})*
+  @*/
+
+  emit A;
+  loop 
+    pause
+  end loop 
+
+  end module
