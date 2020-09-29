@@ -1,0 +1,17 @@
+  module testcase22:
+  output S1;
+
+
+signal S1 in 
+
+present S1
+    then nothing
+    else nothing
+end present;
+emit S1 
+
+
+end signal
+
+
+  end module

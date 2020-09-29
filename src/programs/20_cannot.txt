@@ -1,0 +1,12 @@
+  module testcase20:
+  output S1, S2;
+
+  signal S in 
+    present S 
+      then emit S1 
+      else emit S2 
+    end present
+  end signal
+
+
+  end module

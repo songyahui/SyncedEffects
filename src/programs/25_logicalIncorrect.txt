@@ -1,0 +1,17 @@
+  module testcase25:
+  output Souter, Sinner;
+
+
+
+signal Souter in 
+signal Sinner in 
+
+present Sinner then emit Souter else nothing end present;
+
+present Souter then nothing else nothing end present
+
+end signal
+end signal
+
+
+  end module

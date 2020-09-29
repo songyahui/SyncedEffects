@@ -1,0 +1,20 @@
+  module testcase16:
+  output SL1, SL2;
+
+          /*@
+  require {} 
+  ensure {}
+  @*/
+
+signal SL1 in 
+signal SL2 in 
+
+  present SL1 then emit SL2 else nothing end present
+  
+end signal
+end signal
+
+  end module
+
+
+

@@ -1,0 +1,17 @@
+  module testcase33:
+  input S1;
+  output S1;
+
+  /*@
+  require {}
+  ensure {}.{S1} 
+  @*/
+
+  signal S1 in
+    present S1 
+    then emit S1 
+    else nothing
+    end present
+  end signal
+
+  end module
