@@ -1,0 +1,19 @@
+
+  module testcase9:
+  output A,B, C, D, E, F, G;
+
+  /*@
+  require {} 
+  ensure ({})*. ({B})^w
+  @*/
+
+  emit A;
+
+  loop 
+    emit B;
+    pause;
+    emit C
+  end loop
+  
+
+  end module

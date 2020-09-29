@@ -1,18 +1,17 @@
-
-  module loopTEST:
+ module testcase3:
   output A,B, C;
 
   /*@
   require {} 
-  ensure {A, B} . ({C}. {B})*
+  ensure {A} . ({ B}.{C})*
   @*/
 
   emit A;
   loop 
+  pause;
   emit B;
   pause;
-  emit C;
-  pause
+  emit C
   end loop 
 
   end module

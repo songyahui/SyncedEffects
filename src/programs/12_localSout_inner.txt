@@ -1,0 +1,26 @@
+  module testcase12:
+  output A;
+  /*@
+  require {} 
+  ensure {} 
+  @*/
+
+signal Souter in
+signal Sinner in 
+
+present Souter 
+          then nothing 
+          else nothing
+end present;
+
+present Sinner 
+          then emit Souter 
+          else nothing
+end present
+
+end signal
+end signal
+  
+
+  end module
+

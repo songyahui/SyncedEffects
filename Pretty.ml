@@ -126,13 +126,13 @@ let rec showLTL (ltl:ltl):string =
 
 let string_of_state (state :signal):string = 
   match state with 
-    One name -> name 
-  | Zero name -> "!"^name;; 
+    One name -> name ^","
+  | Zero name -> "" (*"!"^name*);; 
 
 
 let string_of_sl (sl):string = 
   List.fold_left (fun acc sig_ -> 
-  acc ^ " " ^ 
+  acc ^ "" ^ 
   string_of_state sig_
   ) "" sl
 ;;

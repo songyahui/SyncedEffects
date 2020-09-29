@@ -1,14 +1,12 @@
-
-
-
-  module loopTEST:
+  module testcase5:
   output A,B, C;
 
   /*@
   require {} 
-  ensure ({ })*
+  ensure {A} . ({})*
   @*/
 
+  emit A;
   loop 
     pause
   end loop 

@@ -1,0 +1,24 @@
+
+
+  module testcase8:
+  output A,B, C, D, E, F, G;
+
+  /*@
+  require {} 
+  ensure {A, E } . {B, C,   F } . {G} \/ ({})* . {G}
+  @*/
+
+  (emit A;
+   pause;
+   emit B;
+   emit C)
+  
+  ||
+  (emit E;
+   pause;
+   emit F;
+   pause;
+   emit G)
+  
+
+  end module

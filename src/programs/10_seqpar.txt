@@ -1,0 +1,22 @@
+  module testcase10:
+  output A,B, C, D, E, F, G;
+
+  /*@
+  require {} 
+  ensure {B,A,C} . {}
+  @*/
+
+  emit A;
+
+   
+    (emit B)
+    ||
+    (emit C)
+    ;
+    pause
+    
+
+  
+
+  end module
+

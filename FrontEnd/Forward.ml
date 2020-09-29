@@ -41,6 +41,7 @@ let rec can_fun (s:var) (prog:prog) (origin: prog) (full:spec_prog list) :bool =
   
 
 let rec p_es_To_state (es:p_es) :prog_states = 
+  let es = normalPES es in 
   match es with 
   | PEmp -> [(PEmp, None, None)]
   | PInstance ins -> [(PEmp, Some ins, None)]
@@ -52,12 +53,15 @@ let rec p_es_To_state (es:p_es) :prog_states =
   | PKleene esIn -> 
     let his_cur_list = p_es_To_state esIn in 
     List.map (fun (his,cur, trap) -> (PCon (es, his), cur, trap)) his_cur_list
+  | POmega esIn -> 
+    let his_cur_list = p_es_To_state esIn in 
+    List.map (fun (his,cur, trap) -> (PCon (es, his), cur, trap)) his_cur_list
   | PNtimed (esIn, n) ->
     assert (n>1);
     let his_cur_list = p_es_To_state esIn in 
     List.map (fun (his,cur, trap) -> (PCon (PNtimed (esIn, n-1), his), cur, trap)) his_cur_list
 
-  | _ -> raise (Foo "there is a EMP OR BOT HERE")
+  | PBot -> raise (Foo "there is a BOT HERE")
   ;;
 
 
@@ -111,9 +115,30 @@ let isEmp xs : bool =
   | _ -> false 
 ;;
 
+let rec filterZero (pes:p_es) : p_es = 
+  match pes with 
+  | PBot -> PBot
+  | PEmp -> PEmp
+  | PInstance (p, ins) -> 
+  PInstance (p, 
+    List.filter (
+      fun a -> 
+        match a with  
+        Zero _ -> false 
+      | One _ -> true 
+    ) ins )
+  | PCon (es1, es2) ->PCon (filterZero es1, filterZero es2)
+  | PDisj (es1, es2) ->PDisj (filterZero es1, filterZero es2)
+  | PKleene (es1) -> PKleene( filterZero es1)
+  | POmega (es1) -> POmega (filterZero es1)
+  | PNtimed (es1, n) -> PNtimed (filterZero es1, n)
+  ;;
+
 let rec paralleEffLong es1 es2 : p_es = 
   let norES1 = normalPES es1 in 
   let norES2 = normalPES es2 in 
+  let norES1 = filterZero norES1 in 
+  let norES2 = filterZero norES2 in 
   let fst1 = getFstPes norES1 in
   let fst2 = getFstPes norES2 in 
   let headcom = zip fst1 fst2 in 
@@ -136,6 +161,8 @@ let rec paralleEffLong es1 es2 : p_es =
 let rec paralleEffShort es1 es2 : p_es = 
   let norES1 = normalPES es1 in 
   let norES2 = normalPES es2 in 
+  let norES1 = filterZero norES1 in 
+  let norES2 = filterZero norES2 in 
   let fst1 = getFstPes norES1 in
   let fst2 = getFstPes norES2 in 
   let headcom = zip fst1 fst2 in 
@@ -192,13 +219,18 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
     List.map (fun (his, curr, trap) -> 
     (his,  curr, trap )) current
   | Emit s -> 
+  print_string (string_of_prg_state current ^ "\n");
+
     List.map (fun (his, curr, trap) -> 
       (match trap with 
       | Some name  -> (his, curr, trap)
       | None -> 
           (match curr with 
             None -> raise (Foo "Emit doesn't work...")
-          | Some (path, curr) -> (his, Some (path, setTrue curr s), trap )
+          | Some (path, curr) -> 
+          print_string (string_of_instance (setTrue curr s) ^ "\n");
+
+          (his, Some (path, setTrue curr s), trap )
           )
       )) current
   | Pause -> 
@@ -268,13 +300,13 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
             List.map (fun (((p, head):p_instance), (tail:p_es)) ->
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
-              (true, true) -> (PCon (his, PCon (PInstance curr1, PKleene (PCon (tail, PInstance (p, head))))), None, None)
+              (true, true) -> (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*右边有pause, his.(curr+head).(tail.head)^* *)
-            | (false, true) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), PKleene (PCon (tail, PInstance (p, head))))), None, None)
+            | (false, true) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
-            | (true, false) ->(PCon (his, PCon (PInstance curr1, PKleene (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
+            | (true, false) ->(PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
-            | (false, false) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), PKleene (addToHead (new_p, new_curr1) new_his))), None, None)
+            | (false, false) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), POmega (addToHead (new_p, new_curr1) new_his))), None, None)
             ) head_tail_list
           ) newState_list
         )
@@ -375,6 +407,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | None -> (his, cur, Some name)
       )current
   | Par (p1, p2)  -> 
+      print_string (string_of_prg_state current ^ "\n");
       List.flatten (List.map (fun (his, cur, trap)-> 
       match trap with 
         Some _ -> [(his, cur, trap)]
