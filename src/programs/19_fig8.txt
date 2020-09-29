@@ -1,0 +1,24 @@
+  module correctness:
+  output A,B,C ,D, E, F, G;
+
+signal S1 in 
+
+present S1 then nothing else emit S1 end present
+
+
+end signal
+  end module
+
+
+    module correctness:
+  output A,B,C ,D, E, F, G;
+
+  signal S in 
+    present S 
+      then emit S1 
+      else emit S2 
+    end present
+  end signal
+
+
+  end module

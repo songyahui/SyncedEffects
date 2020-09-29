@@ -1,0 +1,18 @@
+  module correctness:
+  output ;
+
+signal S1 in 
+
+present S1 then emit S1 else nothing end present
+
+end signal
+ end module
+
+
+  module correctness1:
+  input S1 ;
+  output S1;
+
+present S1 then emit S1 else nothing end present
+
+ end module
