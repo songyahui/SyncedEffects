@@ -219,7 +219,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
     List.map (fun (his, curr, trap) -> 
     (his,  curr, trap )) current
   | Emit s -> 
-  print_string (string_of_prg_state current ^ "\n");
+    (*print_string (string_of_prg_state current ^ "\n");*)
 
     List.map (fun (his, curr, trap) -> 
       (match trap with 
@@ -228,7 +228,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           (match curr with 
             None -> raise (Foo "Emit doesn't work...")
           | Some (path, curr) -> 
-          print_string (string_of_instance (setTrue curr s) ^ "\n");
+
+          (*print_string (string_of_instance (setTrue curr s) ^ "\n");*)
 
           (his, Some (path, setTrue curr s), trap )
           )
@@ -286,27 +287,35 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | Some curr1 ->
         
        (* by cases *)
-        let newState_list = forward evn [(PEmp, Some ([], []), trap )] prog original full in
+        let newState_list = forward evn [(PEmp, Some ([], make_nothing evn), trap )] prog original full in
         List.flatten (
           List.map (fun (new_his, new_curr, new_trap) ->
           match new_trap with 
           | Some name -> [(PCon (his, addToHead curr1 new_his), new_curr, new_trap)]
           | None -> 
+          
           let new_his = normalPES new_his in 
           match new_curr with 
             None -> raise (Foo "something wrong inside loop")
           | Some (new_p, new_curr1) -> 
             let head_tail_list = split_p_es_head_tail (normalPES new_his) in 
             List.map (fun (((p, head):p_instance), (tail:p_es)) ->
+            (*print_string (string_of_sl head);
+            print_string (string_of_p_es tail);
+
+            print_string (string_of_bool (isEmp (head)));
+            print_string (string_of_bool (isEmp (new_curr1)));*)
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
               (true, true) -> (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*右边有pause, his.(curr+head).(tail.head)^* *)
-            | (false, true) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), POmega (PCon (tail, PInstance (p, head))))), None, None)
+            | (false, true) ->(PCon (his, PCon (PInstance (unionSL curr1 (p, head)), POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
             | (true, false) ->(PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
-            | (false, false) ->(PCon (his, PCon (PInstance (appendSL curr1 (p, head)), POmega (addToHead (new_p, new_curr1) new_his))), None, None)
+            | (false, false) ->
+            
+            (PCon (his, PCon (PInstance (unionSL curr1 (p, head)), POmega (addToHead (new_p, new_curr1) new_his))), None, None)
             ) head_tail_list
           ) newState_list
         )
@@ -333,19 +342,19 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           if can_fun s original original full then 
             if mem s evn then 
             (
-            let eff1 = forward evn [(his, Some (List.append [(One s)] path,  cur ), trap)] p1 original full in 
-            let eff2 = forward evn [(his, Some (List.append [(Zero s)] path, cur ), trap)] p2 original full in 
+            let eff1 = forward evn [(his, Some (List.append [(One s)] path, deleteRedundent cur ), trap)] p1 original full in 
+            let eff2 = forward evn [(his, Some (List.append [(Zero s)] path,deleteRedundent cur ), trap)] p2 original full in 
             List.append eff1 eff2
             )
             else 
             (
-            let eff1 = forward evn [(his, Some ( path,  cur ), trap)] p1 original full in 
-            let eff2 = forward evn [(his, Some ( path, cur ), trap)] p2 original full in 
+            let eff1 = forward evn [(his, Some ( path,deleteRedundent  cur ), trap)] p1 original full in 
+            let eff2 = forward evn [(his, Some ( path,deleteRedundent cur ), trap)] p2 original full in 
             List.append eff1 eff2
             )
           else (*cannot*)
-            if mem s evn then forward evn [(his, Some (List.append [(Zero s)] path, cur ), trap)] p2 original full 
-            else forward evn [(his, Some ( path, cur ), trap)] p2 original full 
+            if mem s evn then forward evn [(his, Some (List.append [(Zero s)] path,deleteRedundent cur ), trap)] p2 original full 
+            else forward evn [(his, Some ( path, deleteRedundent cur ), trap)] p2 original full 
       )
     ) current)
     
@@ -477,7 +486,8 @@ let verifier (spec_prog:spec_prog) (full: spec_prog list):string =
 
   let finel_p_effects = state_To_p_es final_states in 
 
-  let normalFinial_p_eff = normalPES finel_p_effects in 
+  (*print_string (string_of_p_es finel_p_effects);*)
+  let normalFinial_p_eff = normalPESFinal finel_p_effects in 
   
   let (res) = logical_correctness inp_sig normalFinial_p_eff in 
 

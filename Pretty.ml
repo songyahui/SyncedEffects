@@ -127,7 +127,7 @@ let rec showLTL (ltl:ltl):string =
 let string_of_state (state :signal):string = 
   match state with 
     One name -> name ^","
-  | Zero name -> "" (*"!"^name*);; 
+  | Zero name -> "!"^name ^",";; 
 
 
 let string_of_sl (sl):string = 
@@ -304,8 +304,6 @@ let rec nullable (es:es):bool =
   | Ntimed (_, n) -> n==0 
   ;;
 
-
-
 let rec normalPES es: p_es =
   match es with 
   
@@ -345,12 +343,62 @@ let rec normalPES es: p_es =
       )
   | PInstance (ssp, ss) -> 
     let (new_a, new_b) = (deleteRedundent ssp, deleteRedundent ss) in 
-    if checkHasFalse (append new_a new_b) then  PBot else 
+    (*if checkHasFalse (append new_a new_b) then  PBot else *)
     (PInstance (new_a, new_b))
   | PKleene esIn -> PKleene (normalPES esIn)
   | POmega esIn -> POmega (normalPES esIn)
 
   | PNtimed (esIn, n) -> if n==0 then PEmp else PNtimed (normalPES esIn, n) 
+  | _ -> es 
+  ;;
+
+
+
+let rec normalPESFinal es: p_es =
+  match es with 
+  
+  | PCon (es1, es2) -> 
+      let norES1 = normalPESFinal es1 in 
+      let norES2 = normalPESFinal es2 in 
+      (*print_string (string_of_es norES1);*)
+      (match (norES1, norES2) with 
+        (PEmp, _) -> norES2 
+      | (_, PEmp) -> norES1
+      | (POmega _, _ ) -> norES1
+      | (PCon(es1, es2), es3) -> normalPESFinal (PCon (normalPESFinal es1, normalPESFinal (PCon(es2, es3)) ))
+      | (PDisj (or1, or2), es2) -> PDisj(PCon(or1, es2), PCon(or2, es2))
+      | (es1, PDisj (or1, or2)) -> PDisj(PCon(es1, or1), PCon(es1, or2))
+
+      | (PBot, _) -> PBot 
+      | (_ , PBot) -> PBot 
+      
+      | _ -> 
+      
+      PCon (norES1, norES2)
+      )
+  | PDisj (es1, es2) -> 
+      let norES1 = normalPESFinal es1 in 
+      let norES2 = normalPESFinal es2 in 
+      (match (norES1, norES2) with 
+      | (PBot, PBot) -> PBot
+      | (PBot, _) -> norES2
+      | (_, PBot) -> norES1
+      | (PDisj(es1In, es2In), norml_es2 ) ->
+        PDisj (PDisj((normalPESFinal es1In), (normalPESFinal es2In)), norml_es2 )
+      | (norml_es2, PDisj(es1In, es2In) ) ->
+        PDisj (norml_es2, PDisj((normalPESFinal es1In), (normalPESFinal es2In)))
+      | _ ->
+
+      PDisj (norES1, norES2)
+      )
+  | PInstance (ssp, ss) -> 
+    let (new_a, new_b) = (deleteRedundent ssp, deleteRedundent ss) in 
+    if checkHasFalse (append new_a new_b) then  PBot else 
+    (PInstance (new_a, new_b))
+  | PKleene esIn -> PKleene (normalPESFinal esIn)
+  | POmega esIn -> POmega (normalPESFinal esIn)
+
+  | PNtimed (esIn, n) -> if n==0 then PEmp else PNtimed (normalPESFinal esIn, n) 
   | _ -> es 
   ;;
 
@@ -372,12 +420,22 @@ let rec isNotBot  (p_Es:p_es) : bool =
 | _ -> true 
 ;;
 let appendSL ((a, b):p_instance) ((aa, bb):p_instance) :p_instance = 
+  (*print_string (string_of_sl b ^"\n");
+  print_string (string_of_sl bb ^"\n");*)
   (List.append a aa,  List.append b bb);;
   
+let unionSL ((a, b):p_instance) ((aa, bb):p_instance) :p_instance = 
+  (*print_string (string_of_sl b ^"\n");
+  print_string (string_of_sl bb ^"\n");*)
+  let helper b = 
+    List.filter (fun a -> match a with 
+      Zero _-> false
+    | One _ -> true ) b in 
+  (List.append a aa,  List.append (helper b) (helper bb));;
 
 let rec addToHead (ins: p_instance) (es:p_es) :p_es = 
   match es with
-  | PInstance ins1 ->  PInstance (appendSL ins ins1)
+  | PInstance ins1 ->  PInstance (unionSL ins ins1)
   | PCon (es1, es2) -> PCon (addToHead ins es1, es2) 
   | PDisj (es1, es2) -> PDisj (addToHead  ins es1, addToHead ins es2)
   | PKleene esIn -> PCon (addToHead ins esIn, es)
@@ -387,12 +445,19 @@ let rec addToHead (ins: p_instance) (es:p_es) :p_es =
 
 
 let rec logical_correctness inp_sig es: bool =
-  let p_es = normalPES es in 
+  let p_es = normalPESFinal es in 
   match inp_sig with
-    [] -> isNotDisjTrace p_es && isNotBot p_es
+    [] -> 
+    (*print_string("\n======\n");
+    print_string (string_of_p_es ( (es))^"\n");*)
+    isNotDisjTrace p_es && isNotBot p_es
   | x::xs -> 
     let temp1 = logical_correctness xs (addToHead ([], [(One x)]) es) in 
     let temp2 = logical_correctness xs (addToHead ([], [(Zero x)]) es) in 
+    (*print_string("\n======\n");
+    print_string (string_of_p_es (normalPES (addToHead ([], [(One x)]) es))^"\n");
+    print_string (string_of_p_es (normalPES (addToHead ([], [(Zero x)]) es))^"\n");
+    *)
     temp1 && temp2
     
 ;;
