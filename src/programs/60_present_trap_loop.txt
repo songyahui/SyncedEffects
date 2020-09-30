@@ -1,0 +1,36 @@
+  module testcase60:
+  output A,B,C ,D, E, F;
+
+/*@
+  require {} 
+  ensure { A} . {F} .{E}
+@*/
+
+(emit A)
+||
+(present A then
+trap T1 in 
+
+loop 
+  emit A;
+   pause;
+
+   trap T2 in
+   emit F;
+   pause;
+   emit E;
+   exit T1
+   end trap ;
+   emit B;
+    exit T1;
+          emit C
+          end loop 
+
+end trap
+
+else nothing
+end present
+)
+
+
+  end module
