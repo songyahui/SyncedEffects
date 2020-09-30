@@ -1,0 +1,14 @@
+
+  module testcase70:
+  input  ;
+  output ;
+
+    /*@
+  require {} 
+  ensure {S1} \/ {}
+  @*/
+
+signal S in 
+present S then nothing else emit S end present
+end signal
+ end module

@@ -1,16 +1,16 @@
   module testcase1:
-  output A,B, C;
+  output A,B,C;
 
   /*@
   require {} 
-  ensure {A, B} . ({C, B})*
+  ensure {A, B} . ({B, C})*
   @*/
 
   emit A;
   loop 
-  emit B;
-  pause;
-  emit C
+    emit B;
+    pause;
+    emit C
   end loop 
 
   end module

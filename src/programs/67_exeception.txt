@@ -1,0 +1,15 @@
+  module testcase67:
+  output A, B;
+  /*@
+  require {} 
+  ensure {A} 
+  @*/
+  trap T1 in 
+  trap T2 in 
+    emit A; 
+    (exit T1) || (exit T2)
+  end trap;
+  emit B
+  end trap
+
+  end module
