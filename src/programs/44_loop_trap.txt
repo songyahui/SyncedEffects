@@ -1,0 +1,25 @@
+  module testcase42:
+  output A,B,C ,D, E, F;
+
+/*@
+  require {} 
+  ensure { A} . ({ A, C}.{B})^w
+@*/
+
+  emit A;
+  loop 
+  pause;
+
+ (trap T1 in 
+  emit A;
+   pause;
+   emit B;
+    exit T1;
+          emit C
+
+end trap)
+  ||
+  (emit C; pause; emit D; pause; emit F)
+  end loop 
+
+  end module

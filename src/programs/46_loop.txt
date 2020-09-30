@@ -1,0 +1,17 @@
+  module testcase46:
+  output A,B,C,E,  D;
+
+/*@
+  require {} 
+  ensure { A} . ({ B, C}.{D})^w
+@*/
+
+  emit A;
+  loop 
+
+
+ emit B;emit C; pause; emit E;emit D
+  
+  end loop 
+
+  end module
