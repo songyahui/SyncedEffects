@@ -1,0 +1,15 @@
+  module testcase71:
+  output S;
+  /*@
+  require {} 
+  ensure {S}
+  @*/
+  signal S in 
+    present S 
+      then emit S
+      else emit S 
+    end present
+  end signal
+  end module
+
+  
