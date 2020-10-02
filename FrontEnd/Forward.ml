@@ -110,7 +110,12 @@ let rec split_p_es_head_tail (es:p_es) :(p_instance * p_es) list =
   ;;
 
 let isEmp xs : bool = 
-  match xs with 
+  let noneZero = List.filter (fun a ->
+    match a with
+      Zero _ -> false
+    | _ -> true 
+  ) xs   in 
+  match noneZero with 
     [] -> true 
   | _ -> false 
 ;;
@@ -300,18 +305,20 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           | Some (new_p, new_curr1) -> 
             let head_tail_list = split_p_es_head_tail (normalPES new_his) in 
             List.map (fun (((p, head):p_instance), (tail:p_es)) ->
-            (*print_string (string_of_sl head);
+            print_string (string_of_sl head);
             print_string (string_of_p_es tail);
 
             print_string (string_of_bool (isEmp (head)));
-            print_string (string_of_bool (isEmp (new_curr1)));*)
+            print_string (string_of_bool (isEmp (new_curr1)));
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
               (true, true) -> (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*右边有pause, his.(curr+head).(tail.head)^* *)
             | (false, true) ->(PCon (his, PCon (PInstance (unionSL curr1 (p, head)), POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
-            | (true, false) ->(PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
+            | (true, false) ->
+            print_string ("I am here \n");
+            (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
             | (false, false) ->
             

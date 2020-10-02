@@ -1,0 +1,24 @@
+  module testcase84:
+  input SL1, SL2;
+  output A, B, C, E, F, G;
+
+  /*@
+  require {} 
+  ensure {E}.{F}.{G}
+  @*/
+
+(emit A;
+pause;
+emit B;
+emit C)
+||
+(emit E;
+pause;
+emit F;
+pause;
+emit G
+)
+  
+
+  end module
+

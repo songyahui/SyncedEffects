@@ -1,0 +1,27 @@
+  module testcase81:
+  input SL1, SL2;
+  output SO1, SO2, SL3;
+
+
+signal O1 in 
+signal O2 in 
+
+
+present SL2
+    then present SL1
+              then emit S01
+              else emit SL3
+              end present
+    else present SL1 
+              then emit S02
+              else emit SL3 
+              end present
+              end present
+
+
+end signal
+end signal
+  
+
+  end module
+

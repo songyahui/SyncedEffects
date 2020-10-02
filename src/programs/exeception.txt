@@ -1,5 +1,0 @@
-(signal A
-  (trap T 
-    ((trap U 
-        ((exit T 1) || (exit U 0)));
-      emit A)))

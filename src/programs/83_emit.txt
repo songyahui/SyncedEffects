@@ -1,0 +1,18 @@
+  module testcase83:
+  input SL1, SL2;
+  output A, B, C, E, F, G;
+
+  /*@
+  require {} 
+  ensure {E}.{F}.{G}
+  @*/
+
+emit E;
+pause;
+emit F;
+pause;
+emit G
+  
+
+  end module
+

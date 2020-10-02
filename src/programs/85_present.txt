@@ -1,0 +1,28 @@
+  module testcase85:
+  input SL1, SL2;
+  output O1, O2;
+
+  /*@
+  require {} 
+  ensure {E}.{F}.{G}
+  @*/
+
+signal O1 in 
+signal O2 in 
+
+(present O1 then emit O1 else nothing end present)
+
+||
+
+(present O1 then present O2 then nothing else emit O2
+end present
+else nothing
+end present )
+
+
+end signal 
+  end signal
+  
+
+  end module
+

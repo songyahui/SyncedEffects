@@ -1,0 +1,24 @@
+  module testcase72:
+  input SL1, SL2;
+  output SO1, SO2, SL3;
+ /*@
+  require {} 
+  ensure {SL3}
+  @*/
+
+present SL1
+    then 
+      present SL2 
+           then   emit SO1 
+           else   emit SL3
+    end present
+    else 
+      present SL2 
+           then emit SO2 
+           else emit SL3
+      end present
+end present
+  
+
+  end module
+

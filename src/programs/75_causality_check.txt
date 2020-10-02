@@ -1,0 +1,19 @@
+  module testcase75:
+  input SL1, SL2;
+  output SO1, SO2, SL3;
+ /*@
+  require {} 
+  ensure {}
+  @*/
+
+  emit SL2;
+present SL3 then pause else nothing
+end present
+;
+    emit SL1
+  
+
+  end module
+
+
+
