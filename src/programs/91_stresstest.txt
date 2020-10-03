@@ -1,0 +1,139 @@
+  module testcase91:
+  input SL1, SL2;
+  output O1, O2, A, B, C, D, E, F, G;
+
+
+  /*@
+  require {} 
+  ensure {A} . {B} . {C} . {D} . {E} . {F} . {C} . {D}
+  @*/
+
+  ((emit A)
+  ||
+  (emit G)
+  ;
+  present A 
+  then 
+  (emit A)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit B)
+  ||
+  (emit G)
+  ;
+  present B 
+  then 
+  (emit B)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit C)
+  ||
+  (emit G)
+  ;
+  present C 
+  then 
+  (emit C)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit D)
+  ||
+  (emit G)
+  ;
+  present D 
+  then 
+  (emit D)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit E)
+  ||
+  (emit G)
+  ;
+  present E 
+  then 
+  (emit E)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit F)
+  ||
+  (emit G)
+  ;
+  present F 
+  then 
+  (emit F)
+  ||
+  (emit G)
+  else nothing
+  end present;
+
+  pause;
+  (emit C)
+  ||
+  (emit G)
+  ;
+  present C 
+  then 
+  (emit C)
+  ||
+  (emit G)
+  else nothing
+  end present;
+  
+  pause;
+  (emit D)
+  ||
+  (emit G)
+  ;
+  present D
+  then 
+  (emit D)
+  ||
+  (emit G)
+  else nothing
+  end present)
+
+  ||
+
+  (
+  pause;
+  emit A;
+  pause;
+  emit B;
+  pause;
+  emit C;
+  pause;
+  emit D;
+  pause;
+  emit E;
+  pause;
+  emit F;
+  pause;
+  emit C;
+  pause;
+  emit D
+
+  )
+
+
+
+
+    end module

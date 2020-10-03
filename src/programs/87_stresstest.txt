@@ -1,0 +1,27 @@
+  module testcase87:
+  input SL1, SL2;
+  output O1, O2, A, B, C, D, E, F, G;
+
+  /*@
+  require {} 
+  ensure {A} . {B} . {C} . {D} . {E} . {F} . {C} . {D}
+  @*/
+
+  emit A;
+  pause;
+  emit B;
+  pause;
+  emit C;
+  pause;
+  emit D;
+  pause;
+  emit E;
+  pause;
+  emit F;
+  pause;
+  emit C;
+  pause;
+  emit D
+
+
+    end module
