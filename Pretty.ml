@@ -127,7 +127,7 @@ let rec showLTL (ltl:ltl):string =
 let string_of_state (state :signal):string = 
   match state with 
     One name -> name ^","
-  | Zero name -> "!"^name ^",";; 
+  | Zero name -> "" (*"!"^name ^","*);; 
 
 
 let string_of_sl (sl):string = 

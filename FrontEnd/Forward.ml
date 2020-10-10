@@ -66,7 +66,8 @@ let rec p_es_To_state (es:p_es) :prog_states =
 
 
 let rec state_To_p_es (state:prog_states):p_es = 
-  normalPES (
+  (* normalPES *)
+   (
   List.fold_left (fun acc (a, b, trap) -> 
   match b with 
     None -> PDisj (acc, a)
@@ -219,6 +220,8 @@ let setTrue (xs:signal list) (s:string) :signal list =
   ;;
 
 let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:prog) (full: spec_prog list): prog_states =
+  (*print_string ("=================\n");
+  print_string (string_of_prg_state current);*)
   match prog with 
     Nothing -> 
     List.map (fun (his, curr, trap) -> 
@@ -305,11 +308,13 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           | Some (new_p, new_curr1) -> 
             let head_tail_list = split_p_es_head_tail (normalPES new_his) in 
             List.map (fun (((p, head):p_instance), (tail:p_es)) ->
-            print_string (string_of_sl head);
+            (*print_string (string_of_sl head);
             print_string (string_of_p_es tail);
 
             print_string (string_of_bool (isEmp (head)));
             print_string (string_of_bool (isEmp (new_curr1)));
+            
+            *)
             match (isEmp (head), isEmp new_curr1) with
               (*两头都有pause, his.curr.(tail.head)^* *)
               (true, true) -> (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (p, head))))), None, None)
@@ -317,7 +322,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
             | (false, true) ->(PCon (his, PCon (PInstance (unionSL curr1 (p, head)), POmega (PCon (tail, PInstance (p, head))))), None, None)
               (*左边有pause, his.curr.(tail.new_curr)^* *)
             | (true, false) ->
-            print_string ("I am here \n");
+            
             (PCon (his, PCon (PInstance curr1, POmega (PCon (tail, PInstance (new_p, new_curr1))))), None, None)
               (*两边都没有pause, his.(curr+head).(tail开头加上结尾的signals)^* *)
             | (false, false) ->
@@ -388,8 +393,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           let (_, in_callee, out_callee, pre_callee, post_callee, body_calles) = helper full in 
           let temp = (pesToEs (normalPES (state_To_p_es current) )) in 
           let (res, tree) = check_containment temp  pre_callee in 
-          (print_string ("[T.r.s: Verification when calling "^mn ^"]\n" ^ 
-          printReport temp pre_callee));
+          
+          printReport temp pre_callee;
           
           if res == false then raise (Foo ("Error when calling "^mn^"\n"))
           else 
@@ -423,7 +428,8 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
       | None -> (his, cur, Some name)
       )current
   | Par (p1, p2)  -> 
-      print_string (string_of_prg_state current ^ "\n");
+      (* print_string (string_of_prg_state current ^ "\n");
+      *)
       List.flatten (List.map (fun (his, cur, trap)-> 
       match trap with 
         Some _ -> [(his, cur, trap)]
