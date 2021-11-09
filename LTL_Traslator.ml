@@ -9,8 +9,8 @@ open Printf
 
 let rec translateLTL (ltl:ltl) : es list =
   match ltl with 
-    Lable str -> [Instance ([], [(str, One)]) ]
-  | Next l -> List.map (fun a -> Con (Any, a)) (translateLTL l)
+    Lable str -> [Instance ([(One str)])]
+  | Next l -> List.map (fun a -> Con (Instance [], a)) (translateLTL l)
   | Global l -> List.map (fun a -> (Kleene a)) (translateLTL l)
   | OrLTL (l1, l2) -> 
     let temp1 =  translateLTL l1 in 
@@ -22,15 +22,22 @@ let rec translateLTL (ltl:ltl) : es list =
     List.flatten (List.map (fun a -> List.map (fun b -> Con (Kleene (a), b) ) temp2) temp1 )
   | Future l -> 
     let temp =  translateLTL l in 
-    List.map (fun a-> Con(Kleene Any, a)) temp
+    List.map (fun a-> Con(Kleene (Instance []), a)) temp
   
   | NotLTL l -> 
-    let temp =  translateLTL l in 
-    List.map (fun a-> Not a) temp
+    (match l with 
+      Lable str  -> [Instance ([(Zero str)])]
+    | _ -> raise (Foo "error NotLTL")
+    )
+   
   | Imply (l1, l2) -> 
-    let temp1 =  translateLTL l1 in 
+    let temp1 =  
+      match l1 with 
+        Lable str  -> [Instance ([(Zero str)])]
+        | _ -> raise (Foo "error NotLTL")
+      in 
     let temp2 =  translateLTL l2 in 
-    List.flatten (List.flatten (List.map (fun a -> List.map (fun b -> List.append [(Not a)] [b] ) temp2) temp1 ))
+    List.flatten (List.map (fun b -> List.append temp1 [b] ) temp2)
 
 
   | _ -> raise (Foo "translateLTL")

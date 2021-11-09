@@ -394,7 +394,7 @@ let rec forward (evn: string list ) (current:prog_states) (prog:prog) (original:
           let temp = (pesToEs (normalPES (state_To_p_es current) )) in 
           let (res, tree) = check_containment temp  pre_callee in 
           
-          printReport temp pre_callee;
+          (*printReport temp pre_callee;*)
           
           if res == false then raise (Foo ("Error when calling "^mn^"\n"))
           else 

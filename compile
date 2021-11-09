@@ -15,12 +15,12 @@ ocamlc -c -o Forward.cmo  FrontEnd/Forward.ml
 
 ocamlc -c -o sleek.cmo  BackEnd/sleek.ml
 
-#ocamlc -c -o LTL_Traslator.cmo  LTL_Traslator.ml
+ocamlc -c -o LTL_Traslator.cmo  LTL_Traslator.ml
 
 ocamlc -o hip parser.cmo  lexer.cmo Pretty.cmo Rewriting.cmo Forward.cmo
 
 ocamlc -o sleek parser.cmo lexer.cmo Pretty.cmo Rewriting.cmo sleek.cmo
 
-#ocamlc -o ltl parser.cmo  lexer.cmo Pretty.cmo LTL_Traslator.cmo
+ocamlc -o ltl parser.cmo  lexer.cmo Pretty.cmo LTL_Traslator.cmo
 
 
