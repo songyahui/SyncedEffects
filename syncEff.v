@@ -20,11 +20,10 @@ Inductive syncEff : Type :=
 | singleton (s: instance)
 | waiting   (s:string)
 | cons      (es1: syncEff) (es2: syncEff)
+| disj      (es1: syncEff) (es2: syncEff)
 | parEff    (es1: syncEff) (es2: syncEff)
 | kleene    (es: syncEff)
 | infinit   (es: syncEff).
-
-Definition effects : Type := (list syncEff).
 
 Inductive expression : Type :=
 | nothing
@@ -61,6 +60,7 @@ match eff with
 | emp          => true
 | singleton _  => false
 | waiting   _  => false
+| disj e1 e2   => nullable e1 || nullable e2
 | cons e1 e2   => nullable e1 && nullable e2
 | parEff e1 e2 => nullable e1 && nullable e2
 | kleene _     => true
@@ -73,6 +73,7 @@ match eff with
 | emp          => []
 | singleton i  => [i]
 | waiting   s  => [[(s, present)]] ++ [[(s, absent)]]
+| disj e1 e2   => fst e1 ++ fst e2
 | cons e1 e2   => if nullable e1 then fst e1 ++ fst e2
                   else fst e1
 | parEff e1 e2 => let f1 := fst e1 in
@@ -95,7 +96,8 @@ Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
      let (name, status) := sig in
      match ins with
      | [] => false
-     | (name', status') :: xs => if eqb name name' && compareStatus status status' then true else exist sig xs
+     | (name', status') :: xs => if eqb name name' && compareStatus status status' 
+                                 then true else exist sig xs
      end in
   match ins1 with
   | [] => true
@@ -103,20 +105,21 @@ Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
   end.
 
 
-Fixpoint derivitive (eff:syncEff) (f:instance) : list syncEff :=
+Fixpoint derivitive (eff:syncEff) (f:instance) : syncEff :=
 match eff with
-| bot          => [bot]
-| emp          => [bot]
-| singleton i  => if instanceEntail f i then [emp] else [bot]
-| waiting   s  => if instanceEntail ([(s, present)]) f then [emp] else [waiting s]
-| cons e1 e2   => let der1 := List.map (fun head => cons head e2)  (derivitive e1 f) in
-                  if nullable e1 then der1 ++ derivitive e2 f
-                  else der1
-| kleene e     => List.map (fun head => cons head eff)  (derivitive e f)
-| infinit e    => List.map (fun head => cons head eff)  (derivitive e f)
+| bot          => bot
+| emp          => bot
+| singleton i  => if instanceEntail f i then emp else bot
+| waiting   s  => if instanceEntail ([(s, present)]) f then emp else waiting s
+| cons e1 e2   => if nullable e1 then disj (cons (derivitive e1 f) e2)  (derivitive e2 f)
+                  else cons (derivitive e1 f) e2
+| disj e1 e2   => disj (derivitive e1 f) (derivitive e2 f)
+| kleene e     => cons (derivitive e f) eff
+| infinit e    => cons (derivitive e f) eff
 | parEff e1 e2 => let f1 := fst e1 in
                   let f2 := fst e2 in
-                  List.flat_map (fun f1In => List.map (fun f2In => f1In ++ f2In) f2) f1
+                  let temp := List.flat_map (fun f1In => List.map (fun f2In => f1In ++ f2In) f2) f1 in 
+                  let 
 end.
 
 
