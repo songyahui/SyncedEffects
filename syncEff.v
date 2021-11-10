@@ -173,6 +173,29 @@ match eff with
 | parEff e1 e2 => [] (* this should not be here ... *)
 end.
 
+Fixpoint parallelMergeEffects (eff1 eff2: syncEff) : list syncEff :=
+let f1s := fst eff1 in
+let f2s := fst eff2 in
+let zipFst := zip_list f1s f2s in
+List.flat_map (fun (pair:(instance * instance)) =>
+           let (f1, f2) := pair in
+           let der1 := normal (derivitive eff1 f1) in
+           let der2 := normal (derivitive eff1 f2) in
+           match (der1, der2) with
+           | (bot, e2) => []
+           | (e1, bot) => []
+           | (emp, e2) => [e2]
+           | (e1, emp) => [e1]
+           | _         =>
+             let parallelRest:list syncEff  := parallelMergeEffects der1 der2 in
+             List.map (fun trace => cons (singleton (List.app f1 f2)) trace) parallelRest
+           end
+) zipFst.
+
+I think perhaps I need to distinguish kleene and the rest, so that
+the derivitive is decresing for sure. 
+
+
 Definition parallelMergeState (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
 List.flat_map (fun (pair:(state * state)) =>
@@ -182,38 +205,14 @@ List.flat_map (fun (pair:(state * state)) =>
   let fulltraces () : syncEff :=
     let trace1 := normal (cons eff1 (singleton cur1)) in
     let trace2 := normal (cons eff2 (singleton cur2)) in
-    parallelMergeEffects eff1 eff2 
+    parallelMergeEffects eff1 eff2
   in
   effectToStates (normal fulltraces)
 
 ) mix_states.
 
 
-(*
-match (trace1, trace2) with
-    | (bot, e2) => bot
-    | (e1, bot) => bot
-    | (emp, e2) => e2
-    | (e1, emp) => e1
-(*
- | (kleene _, kleene _ )
-  | (kleene _, infinit _ )
-  | (infinit _, kleene _ )
-  | (infinit _, infinit _ ) => advancedMerge s1 s2
-*)
-    | _ =>
-      (let fix aux t1 t2 :=
-         let f1 := fst t1 in
-         let f2 := fst t2 in
-         let zipFst := zip_list f1 f2 in
-         List.map (fun (pair:(instance * instance)) =>
-           let (a, b) := pair in
-           let der1 := normal (derivitive t1 a) in
-           let der2 := normal (derivitive t2 a) in
-           match (der1, der2)
-           
-           ) zipFst
-*)
+
 
 
 
