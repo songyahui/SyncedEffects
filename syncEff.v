@@ -237,3 +237,97 @@ List.flat_map (fun (pair:state) =>
 
 cav14 https://www.comp.nus.edu.sg/~chinwn/papers/TRs2.pdf
 aplas13 https://trinhmt.github.io/home/SpecInfer/technical_report.pdf
+
+
+
+
+ append :: xs::LL<n> -> ys::LL<m> --> res::LL<r> & R(n,m,r)
+ 
+ // verification
+  n=0 /\ r=m -> R(n,m,r)
+  /\ n>0 /\ R(n-1,m,r1) /\ r=1+r1 -> R(n,m,r)
+  
+  R(n,m,r) -> r=n+m
+ 
+ 
+ infer[R,n,m] ..... |- ....
+
+Ind inv stp = 
+  \x xs b b' -> 
+      inv xs b => (stp x b b'  => inv (x:xs) b')
+      inv xs b /\ stp x b b'  => inv (x:xs) b'
+              
+  (inv xs b => stp x b b') /\ (inv xs b => inv (x:xs) b')
+			   
+foldr :: (Ind inv stp) =>
+  (x:a -> b:b -> {b':b:stp x b b'})
+  -> {b:b|inv [] b} -> xs:[a] -> {v:b|inv xs v}
+foldr f z xs = case
+  xs of [] -> z
+       x:xs -> f x (foldr f z xs)
+
+(i) write pre/post withn 2nd-order unknown
+(ii) verifier collects relational assumption
+(iii) normalization + simplification
+(iv) fixpoint 	   
+CAV2014 - shape analysis
+	Quang Loc Le, Cristian Gherghina, Shengchao Qin, Wei-Ngan Chin:
+Shape Analysis via Second-Order Bi-Abduction. CAV 2014: 52-68
+
+
+APLAS2013 
+Minh-Thai Trinh, Quang Loc Le, Cristina David, Wei-Ngan Chin:
+Bi-Abduction with Pure Properties for Specification Inference. APLAS 2013: 107-123
+
+
+======================================
+let rec foldr op b ys = 
+(*@
+given (inv: list->int->bool)
+requires
+  inv([],b) &
+  op(arg1:int,arg2:int) |= 
+    Given (xs:list) (xs':list), 
+      { xs::Cons(arg1,xs') & inv(xs',arg2) } *->:r 
+      { inv(xs,r) }
+ensures[res] inv(ys,res)
+@*)
+match ys with
+| [] -> b
+| y::ys -> op y (foldr op b ys)
+
+	   
+	   D1 x xs
+	   D2 y
+	   
+	   CAV2014,APLAS13 shape analysis (relational assumptuon)
+	   
+	   length xs = case xs of 
+	      [] ->  0
+		  x:xs -> 1+ length xs
+		  
+		xs::LL<>
+		
+	   
+- can this spec be automatically verified?
+- can this spec be automatically inferred?
+- can be spec be improved by pre-condition?
+
+  q x y => p y z => r x z
+  
+  q x y /\ p y z => r x z
+  
+  (a => b) => c
+  a => (b => c)
+
+  a /\ b => c
+  
+
+  
+Chain p q r = \x y z -> 
+    /\ q x y /\ p y z => r x z
+compose::(Chain p q r) =>
+  (y:b -> {z:c|p y z})
+  -> (x:b -> {z:c|q x z})
+  -> (x:b -> {z:c|r x z})
+		   
