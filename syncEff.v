@@ -156,11 +156,11 @@ Compute (fst (kleene (singleton [("S", present)]))).
 Compute (normal (derivitive (kleene (singleton [("S", present)])) [("K", present)])).
 
 (* last argument is the completion code true -> normal, flase -> not completed*)
-Definition state : Type := (syncEff * instance).
+Definition state : Type := (syncEff * instance * bool).
 
 Definition states : Type := list state.
 
-Fixpoint effectToStates (*cut function *) (eff:syncEff): state :=
+Fixpoint effectToStates (*cut function *) (eff:syncEff): list (syncEff * instance) :=
 match eff with
 | bot          => []
 | emp          => [(emp, [])]
@@ -197,33 +197,41 @@ Definition parallelMergeState (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
 List.flat_map (fun (pair:(state * state)) =>
   let (s1, s2)     := pair in
-  let (eff1, cur1, k1) := s1 in
-  let (eff2, cur2, k2) := s2 in
-  if 
+  let '(eff1, cur1, k1) := s1 in
+  let '(eff2, cur2, k2) := s2 in
   let fulltraces : syncEff :=
     let trace1 := normal (cons eff1 (singleton cur1)) in
     let trace2 := normal (cons eff2 (singleton cur2)) in
     parallelMergeEffects eff1 eff2
   in
-  effectToStates (normal fulltraces)
+  List.map (fun (p:((syncEff * instance))) =>
+              let (his, cur) := p in
+              if (Bool.eqb k1 false) || (Bool.eqb k2 false) then (his, cur, false) else  (his, cur, true) 
+           ) (effectToStates (normal fulltraces))
 
 ) mix_states.
 
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
-List.flat_map (fun (tuple:state) =>
-  
-  let (his, cur, k) := tuple in
+List.flat_map (fun (pair:state) =>
+  let '(his, cur, k) := pair in
+  if Bool.eqb k false then [pair]
+  else
   match expr with
-  | nothing        => [tuple]
-  | pause          => [(cons his (singleton cur), [])]
+  | nothing        => [pair]
+  | pause          => [(cons his (singleton cur), [], k)]
   | raise str
-  | emit str       => [(his, (str, present)::  cur)]
+  | emit str       => [(his, (str, present)::  cur, k)]
   | localDel str e => let newEnv   := (str)::env in
                       forward newEnv [pair] e
-  | seq e1 e2      => let s1 := (forward env s e1) in
-                      forward env s1 e2
-  | par e1 e2      => let s1 := (forward env s e1) in
+  | seq e1 e2      => let s1 := (forward env [pair] e1) in
+                      List.flat_map (fun (pairE:state)  =>
+                                 let '(hisE, curE, kE) := pairE in
+                                 if Bool.eqb kE false then [pairE]
+                                 else forward env [pairE] e2 ) s1
+
+
+  | par e1 e2      => let s1 := (forward env [pair] e1) in
                       let s2 := (forward env s1 e2) in
                       parallelMergeState s1 s2
   | ifElse s e1 e2 => if instanceEntail cur [(s, present)]
@@ -231,9 +239,9 @@ List.flat_map (fun (tuple:state) =>
                       else forward env [pair] e2
   | async e str    => let s1 := (forward env [pair] e) in
                       List.map (fun (pairE:state) =>
-                                  let (hisE, curE) := pairE in 
-                                  (hisE, (str, present)::curE)) s1
-  | await s        => [(cons his (cons (singleton cur) (waiting s)), [])]
+                                  let '(hisE, curE, kE) := pairE in
+                                  (hisE, (str, present)::curE, kE)) s1
+  | await s        => [(cons his (cons (singleton cur) (waiting s)), [], k)]
   | trycatch e s eHandle => [pair]
   | suspend e s    => [pair]
   | loop e         => [pair]
