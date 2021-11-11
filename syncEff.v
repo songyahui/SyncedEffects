@@ -235,3 +235,5 @@ List.flat_map (fun (pair:state) =>
 ) s.
 
 
+cav14 https://www.comp.nus.edu.sg/~chinwn/papers/TRs2.pdf
+aplas13 https://trinhmt.github.io/home/SpecInfer/technical_report.pdf
