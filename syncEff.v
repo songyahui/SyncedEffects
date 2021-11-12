@@ -4,11 +4,11 @@ Import ListNotations.
 Open Scope string_scope.
 
 (* the default value of a siganl is absent *)
-Inductive signalState : Type := absent | present.
+Inductive signalState : Type := zero | one.
 
-Definition signal : Type :=  (string * signalState).
+Definition signal_status : Type :=  (string * signalState).
 
-Definition instance : Type :=  (list signal).
+Definition instance : Type :=  (list signal_status).
 
 Inductive syncEff : Type :=
 | bot
@@ -21,20 +21,46 @@ Inductive syncEff : Type :=
 | kleene    (es: syncEff).
 
 Inductive expression : Type :=
-| nothing
-| pause
-| emit     (s:string)
-| localDel (s:string)  (e:expression)
-| seq      (e1:expression) (e2:expression)
-| par      (e1:expression) (e2:expression)
-| ifElse   (s:string) (e1:expression) (e2:expression)
-| loop     (e:expression)
-| suspend  (e:expression) (s:string)
-| async    (e:expression) (s:string)
-| await    (s:string)
-| raise    (s:string)
-| trycatch (e:expression) (s:string) (handler:expression)
+| nothingE
+| pauseE
+| emitE     (s:string)
+| localDelE (s:string)  (e:expression)
+| seqE      (e1:expression) (e2:expression)
+| parE      (e1:expression) (e2:expression)
+| ifElseE   (s:string) (e1:expression) (e2:expression)
+| loopE     (e:expression)
+| suspendE  (e:expression) (s:string)
+| asyncE    (e:expression) (s:string)
+| awaitE    (s:string)
+| raiseE    (s:string)
+| trycatchE (e:expression) (s:string) (handler:expression)
 .
+
+Notation "'nothing'" := nothingE (at level 200, right associativity).
+
+Notation "'pause'" := pauseE (at level 200, right associativity).
+
+Notation "'emit' A" := (emitE A) (at level 200, right associativity).
+
+Notation "'signal' A 'in' E" := (localDelE A E)  (at level 200, right associativity).
+
+Notation "E1 ; E2" := (seqE E1 E2)  (at level 200, right associativity).
+
+Notation "E1 '//' E2" := (parE E1 E2)  (at level 200, right associativity).
+
+Notation "'check' A 'then' E1 'else' E2" := (ifElseE A E1 E2)  (at level 200, right associativity).
+Notation "'loop' E" := (loopE E) (at level 200, right associativity).
+
+Notation "'suspend' E 'when' S" := (suspendE E S) (at level 200, right associativity).
+
+Notation "'async' E S" := (asyncE E S) (at level 200, right associativity).
+
+Notation "'await' S" := (awaitE S) (at level 200, right associativity).
+
+Notation "'raise' T" := (raiseE T) (at level 200, right associativity).
+
+Notation "'try' E1 'catch' S 'with' E2" := (trycatchE E1 S E2) (at level 200, right associativity).
+
 
 Definition envenvironment : Type := (list string).
 
@@ -71,7 +97,7 @@ match eff with
 | bot          => []
 | emp          => []
 | singleton i  => [i]
-| waiting   s  => [[(s, present)]] ++ [[(s, absent)]]
+| waiting   s  => [[(s, one)]] ++ [[(s, zero)]]
 | disj e1 e2   => fst e1 ++ fst e2
 | cons e1 e2   => if nullable e1 then fst e1 ++ fst e2
                   else fst e1
@@ -83,8 +109,8 @@ end.
 
 Definition compareStatus (s1 s2: signalState): bool :=
 match (s1, s2) with
-| (absent, ansent)   => true
-| (present, present) => true
+| (zero, zero)   => true
+| (one, one) => true
 (*
 (* I decided not to care about the undefined status for now *)
 | (undef, undef)     => true
@@ -93,7 +119,7 @@ match (s1, s2) with
 end.
 
 Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
-  let fix exist (sig:signal) (ins:instance) : bool :=
+  let fix exist (sig:signal_status) (ins:instance) : bool :=
      let (name, status) := sig in
      match ins with
      | [] => false
@@ -105,9 +131,9 @@ Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
   | y :: ys => if exist y ins1 then instanceEntail ins1 ys else false
   end.
 
-Compute (instanceEntail [("s", absent); ("s1", present)] [("s", present)]).
+Compute (instanceEntail [("s", zero); ("s1", one)] [("s", one)]).
 
-Compute (instanceEntail [] [("s", present)]).
+Compute (instanceEntail [] [("s", one)]).
 
 
 Definition zip_list {A : Type} (l1 l2 : list A): list (A * A) :=
@@ -118,7 +144,7 @@ match eff with
 | bot          => bot
 | emp          => bot
 | singleton i  => if instanceEntail f i then emp else bot
-| waiting   s  => if instanceEntail ([(s, present)]) f then emp else waiting s
+| waiting   s  => if instanceEntail ([(s, one)]) f then emp else waiting s
 | cons e1 e2   => if nullable e1 then disj (cons (derivitive e1 f) e2)  (derivitive e2 f)
                   else cons (derivitive e1 f) e2
 | disj e1 e2   => disj (derivitive e1 f) (derivitive e2 f)
@@ -152,8 +178,8 @@ match eff with
 | kleene e     => kleene (normal e)
 end.
 
-Compute (fst (kleene (singleton [("S", present)]))).
-Compute (normal (derivitive (kleene (singleton [("S", present)])) [("K", present)])).
+Compute (fst (kleene (singleton [("S", one)]))).
+Compute (normal (derivitive (kleene (singleton [("S", one)])) [("K", one)])).
 
 (* last argument is the completion code true -> normal, flase -> not completed*)
 Definition state : Type := (syncEff * instance * bool).
@@ -218,35 +244,47 @@ List.flat_map (fun (pair:state) =>
   if Bool.eqb k false then [pair]
   else
   match expr with
-  | nothing        => [pair]
-  | pause          => [(cons his (singleton cur), [], k)]
-  | raise str
-  | emit str       => [(his, (str, present)::  cur, k)]
-  | localDel str e => let newEnv   := (str)::env in
+  | nothingE        => [pair]
+  | pauseE          => [(cons his (singleton cur), [], k)]
+  | raiseE str      => [(his, (str, one)::  cur, false)]
+  | emitE str       => [(his, (str, one)::  cur, k)]
+  | localDelE str e => let newEnv   := (str)::env in
                       forward newEnv [pair] e
-  | seq e1 e2      => let s1 := (forward env [pair] e1) in
+  | seqE e1 e2      => let s1 := (forward env [pair] e1) in
                       List.flat_map (fun (pairE:state)  =>
                                  let '(hisE, curE, kE) := pairE in
                                  if Bool.eqb kE false then [pairE]
                                  else forward env [pairE] e2 ) s1
 
 
-  | par e1 e2      => let s1 := (forward env [pair] e1) in
+  | parE e1 e2      => let s1 := (forward env [pair] e1) in
                       let s2 := (forward env s1 e2) in
                       parallelMergeState s1 s2
-  | ifElse s e1 e2 => if instanceEntail cur [(s, present)]
+  | ifElseE s e1 e2 => if instanceEntail cur [(s, one)]
                       then forward env [pair] e1
                       else forward env [pair] e2
-  | async e str    => let s1 := (forward env [pair] e) in
+  | asyncE e str    => let s1 := (forward env [pair] e) in
                       List.map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
-                                  (hisE, (str, present)::curE, kE)) s1
-  | await s        => [(cons his (cons (singleton cur) (waiting s)), [], k)]
-  | trycatch e s eHandle => [pair]
-  | suspend e s    => [pair]
-  | loop e         => [pair]
+                                  (hisE, (str, one)::curE, kE)) s1
+  | awaitE s        => [(cons his (cons (singleton cur) (waiting s)), [], k)]
+  | suspendE e str  => let s1 := (forward env [pair] e) in
+                      List.map (fun (pairE:state) =>
+                                  let '(hisE, curE, kE) := pairE in
+                                  (hisE, (str, zero)::curE, kE)) s1
+  | trycatchE e s h => let s1 := (forward env [pair] e) in
+                      List.flat_map (fun (pairE:state) =>
+                                  let '(hisE, curE, kE) := pairE in
+                                  if kE then [pairE]
+                                  else  (forward env [pairE] h)) s1
+  | loopE e         => [pair]
   end
 ) s.
+
+Definition testP1 : expression :=
+  emit "A"; emit "B"; pause; emit "C".
+
+Compute (forward [] [(emp, [], true)] testP1).
 
 
 cav14 https://www.comp.nus.edu.sg/~chinwn/papers/TRs2.pdf
