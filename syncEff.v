@@ -36,6 +36,26 @@ Inductive expression : Type :=
 | trycatchE (e:expression) (s:string) (handler:expression)
 .
 
+Notation "'_|_'" := bot (at level 0, right associativity).
+
+Notation "'ϵ'" := emp (at level 0, right associativity).
+
+Notation "% A" := (A, one) (at level 0, right associativity).
+
+Notation "! A" := (A, zero) (at level 0, right associativity).
+
+Notation "'{{' Eff '}}'" := (singleton Eff) (at level 100, right associativity).
+
+Notation " I1  @  I2 " := (cons I1 I2) (at level 100, right associativity).
+
+Notation " I1  'or'  I2 " := (disj I1 I2) (at level 100, right associativity).
+
+Notation " I1  '//'  I2 " := (parEff I1 I2) (at level 100, right associativity).
+
+Notation "'star' I" := (kleene I) (at level 200, right associativity).
+
+
+
 Notation "'nothing'" := nothingE (at level 200, right associativity).
 
 Notation "'pause'" := pauseE (at level 200, right associativity).
@@ -46,7 +66,7 @@ Notation "'signal' A 'in' E" := (localDelE A E)  (at level 200, right associativ
 
 Notation "E1 ; E2" := (seqE E1 E2)  (at level 200, right associativity).
 
-Notation "E1 '//' E2" := (parE E1 E2)  (at level 200, right associativity).
+Notation "'fork' E1 'par' E2" := (parE E1 E2)  (at level 80, right associativity).
 
 Notation "'check' A 'then' E1 'else' E2" := (ifElseE A E1 E2)  (at level 200, right associativity).
 Notation "'loop' E" := (loopE E) (at level 200, right associativity).
@@ -60,6 +80,8 @@ Notation "'await' S" := (awaitE S) (at level 200, right associativity).
 Notation "'raise' T" := (raiseE T) (at level 200, right associativity).
 
 Notation "'try' E1 'catch' S 'with' E2" := (trycatchE E1 S E2) (at level 200, right associativity).
+
+
 
 
 Definition envenvironment : Type := (list string).
@@ -281,11 +303,16 @@ List.flat_map (fun (pair:state) =>
   end
 ) s.
 
+
+
+
 Definition testP1 : expression :=
   emit "A"; emit "B"; pause; emit "C".
 
-Compute (forward [] [(emp, [], true)] testP1).
+Compute (forward [] [( star {{ [!"A"; !"B"] }}, [], true)] testP1).
 
+
+(*
 
 cav14 https://www.comp.nus.edu.sg/~chinwn/papers/TRs2.pdf
 aplas13 https://trinhmt.github.io/home/SpecInfer/technical_report.pdf
@@ -383,3 +410,4 @@ compose::(Chain p q r) =>
   -> (x:b -> {z:c|q x z})
   -> (x:b -> {z:c|r x z})
 		   
+*)
