@@ -6,7 +6,7 @@ Open Scope string_scope.
 Definition numEvent := 10.
 
 (* the default value of a siganl is absent *)
-Inductive signalState : Type := zero | one.
+Inductive signalState : Type := zero | one | undef.
 
 Definition signal_status : Type :=  (string * signalState).
 
@@ -15,9 +15,10 @@ Definition instance : Type :=  (list signal_status).
 Definition string_of_signal_status (pair:signal_status) : string :=
 let (name, status) := pair in
 (match status with
-| zero => "!"
-| one  => ""
-end) ++  name.
+| zero => "!"  ++  name
+| one  => ""  ++  name
+| undef => ""
+end).
 
 Definition string_of_instance (ins: instance): string :=
 "{" ++
@@ -138,6 +139,7 @@ Definition compareStatus (s1 s2: signalState): bool :=
 match (s1, s2) with
 | (zero, zero)   => true
 | (one, one) => true
+| (undef, undef) => true
 | _                  => false
 end.
 
@@ -194,12 +196,18 @@ match eff with
                   List.fold_left (fun acc t => disj acc t) deris bot
 end.
 
+Definition controdictStatus (s1 s2: signalState): bool :=
+match (s1, s2) with
+| (zero, one)   => true
+| _                  => false
+end.
+
 Definition controdict (ins: instance) : bool :=
 let fix aux (i:signal_status) (li:instance) : bool :=
 let (name',status'):= i in
 match li with
 | [] => false
-| (name, status):: xs => if eqb name name' && (Bool.eqb (compareStatus status status') false)
+| (name, status):: xs => if eqb name name' && (controdictStatus status status')
                          then true else aux i xs
 end in
 let fix helper li :bool :=
@@ -397,11 +405,6 @@ match cur with
 end.
 
 
-Definition appendCurrent (cur: option instance) (i:signal_status): option instance :=
-match cur with
-| None => Some [i]
-| Some ins => Some (List.app ins [i])
-end.
 
 Fixpoint extendEff (eff:syncEff) (i:signal_status): syncEff :=
 match eff with
@@ -426,6 +429,34 @@ match ins with
 end.
 
 
+Definition initalCur (env:envenvironment) : instance :=
+List.map (fun a => (a, undef)) env.
+
+
+这个signal status , undef, one, zero 搞不清楚。 
+
+Definition setSigInCur (env:envenvironment) (cur: option instance) (ss:signal_status): option instance :=
+let (name', status') := ss in
+let fix aux (li:instance) : instance :=
+    match li with
+    | [] => [(ss)]
+    | (name, status) :: xs => if eqb name name' && compareStatus status status'
+                              then ss :: xs
+                              else (name, status) :: (aux xs)
+    end
+in
+match cur with
+| None => Some (aux (initalCur env))
+| Some insIn => Some (aux insIn)
+end.
+
+Definition appendSigInCur (env:envenvironment) (cur: option instance) (ss:signal_status): option instance :=
+match cur with
+| None => (Some (ss :: initalCur env))
+| Some insIn => (Some (ss :: insIn))
+end.
+
+
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
 List.flat_map (fun (pair:state) =>
@@ -436,9 +467,9 @@ List.flat_map (fun (pair:state) =>
    *)
   match expr with
   | nothingE        => [pair]
-  | pauseE          => [(cons his (instanceToEff cur), Some [], k)]
+  | pauseE          => [(cons his (instanceToEff cur), Some (initalCur env), k)]
   | raiseE n        => [(his, cur, S k)]
-  | emitE str       => [(his, appendCurrent cur (str, one), k)]
+  | emitE str       => [(his, setSigInCur env cur (str, one), k)]
   | localDelE str e => let newEnv   := (str)::env in
                        forward newEnv [pair] e
   | seqE e1 e2      => match e1 with
@@ -451,7 +482,7 @@ List.flat_map (fun (pair:state) =>
                          List.flat_map
                            (fun (pairE:state)  =>
                               let '(hisE, curE, kE) := pairE in
-                              if greaterThan k 0 then [pairE]
+                              if greaterThan kE 0 then [pairE]
                               else forward env [pairE] e2) s1
                        end
   | parE e1 e2      => let s1 := (forward env [pair] e1) in
@@ -463,13 +494,13 @@ List.flat_map (fun (pair:state) =>
   | asyncE e str    => let s1 := (forward env [pair] e) in
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
-                                   (hisE, appendCurrent curE (str, one), kE)) s1
+                                   (hisE, setSigInCur env curE (str, one), kE)) s1
   | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), None, k)]
   | suspendE e str  => let s1 := (forward env [(emp, cur, k)] e) in
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
                                    let newhis := cons his (extendEff hisE (str, zero)) in
-                                   let newCur := appendCurrent curE (str, zero) in
+                                   let newCur := setSigInCur env curE (str, zero) in
                                    (newhis, newCur, kE)) s1
   | trycatchE e h => let s1 := (forward env [pair] e) in
                        List.flat_map
@@ -505,7 +536,7 @@ match eff with
 | emp          => ""
 | singleton ins=> string_of_instance ins
 | waiting   s  => s ++ "?"
-| cons e1 e2   =>  "(" ++ string_of_effects e1 ++ "." ++ string_of_effects e2 ++ ")"
+| cons e1 e2   =>  string_of_effects e1 ++ "." ++ string_of_effects e2
 | disj e1 e2   =>  "(" ++ string_of_effects e1 ++ "\/" ++ string_of_effects e2 ++ ")"
 | parEff e1 e2 =>  "(" ++ string_of_effects e1 ++ "||" ++ string_of_effects e2 ++ ")"
 | kleene e     =>  "(" ++ string_of_effects e ++ ")^*"
@@ -519,13 +550,16 @@ else normal (cons his (instanceToEff cur)).
 Definition states_to_eff (states:states) : syncEff :=
 normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
 
+Definition env := ["A"; "B"; "C"; "D"; "E"; "F"; "H"; "T"; "X"; "Y"; "Z" ].
+
 Definition forward_Shell (expr:expression) : string :=
   string_of_effects(
       states_to_eff(
-          forward [] [(emp, None, 0)] expr)).
+          forward env [(emp, None, 0)] expr)).
 
 
 Definition testSeq : expression :=
+  emit "B";
   emit "A";
   emit "B";
   pause;
@@ -609,7 +643,7 @@ Definition testAsyncSeq : expression :=
 Definition testAsyncSeq1 : expression :=
   async testSeq with "S"; await "S" ; emit "K".
 
-Compute (forward_Shell testPal2).
+Compute (forward_Shell testSeq).
 
 
 
