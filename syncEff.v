@@ -141,17 +141,18 @@ match (s1, s2) with
 | _                  => false
 end.
 
-Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
-  let fix exist (sig:signal_status) (ins:instance) : bool :=
+Fixpoint existSigIns (sig:signal_status) (ins:instance) : bool :=
      let (name, status) := sig in
      match ins with
      | [] => false
      | (name', status') :: xs => if eqb name name' && compareStatus status status'
-                                 then true else exist sig xs
-     end in
+                                 then true else existSigIns sig xs
+     end.
+
+Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
   match ins2 with
   | [] => true
-  | y :: ys => if exist y ins1 then instanceEntail ins1 ys else false
+  | y :: ys => if existSigIns y ins1 then instanceEntail ins1 ys else false
   end.
 
 Definition instanceEntailShell (ins1 ins2 : option instance) : bool :=
@@ -193,11 +194,35 @@ match eff with
                   List.fold_left (fun acc t => disj acc t) deris bot
 end.
 
+Definition controdict (ins: instance) : bool :=
+let fix aux (i:signal_status) (li:instance) : bool :=
+let (name',status'):= i in
+match li with
+| [] => false
+| (name, status):: xs => if eqb name name' && (Bool.eqb (compareStatus status status') false)
+                         then true else aux i xs
+end in
+let fix helper li :bool :=
+match li with
+| [] => false
+| y :: ys => if aux y ins then true else helper ys
+end in
+helper ins.
+
+Fixpoint remove_dup (ins: instance) : instance :=
+match ins with
+| [] => []
+| [x] => [x]
+| y :: ys => if existSigIns y ins then remove_dup ys else y :: (remove_dup ys)
+end.
+
+
+
 Fixpoint normal (eff:syncEff) : syncEff :=
 match eff with
 | bot          => eff
 | emp          => eff
-| singleton _  => eff
+| singleton ins=> if controdict ins then bot else singleton (remove_dup ins)
 | waiting   _  => eff
 | cons bot  _  => bot
 | cons emp e   => normal e
@@ -416,12 +441,19 @@ List.flat_map (fun (pair:state) =>
   | emitE str       => [(his, appendCurrent cur (str, one), k)]
   | localDelE str e => let newEnv   := (str)::env in
                        forward newEnv [pair] e
-  | seqE e1 e2      => let s1 := (forward env [pair] e1) in
-                       List.flat_map
-                         (fun (pairE:state)  =>
-                            let '(hisE, curE, kE) := pairE in
-                            if greaterThan k 0 then [pairE]
-                            else forward env [pairE] e2) s1
+  | seqE e1 e2      => match e1 with
+                       | asyncE _ _ =>
+                         let s1 := (forward env [pair] e1) in
+                         let s2 := (forward env [pair] e2) in
+                         parallelMergeState s1 s2
+                       | _ =>
+                         let s1 := (forward env [pair] e1) in
+                         List.flat_map
+                           (fun (pairE:state)  =>
+                              let '(hisE, curE, kE) := pairE in
+                              if greaterThan k 0 then [pairE]
+                              else forward env [pairE] e2) s1
+                       end
   | parE e1 e2      => let s1 := (forward env [pair] e1) in
                        let s2 := (forward env [pair] e2) in
                        parallelMergeState s1 s2
@@ -432,7 +464,7 @@ List.flat_map (fun (pair:state) =>
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
                                    (hisE, appendCurrent curE (str, one), kE)) s1
-  | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), Some [], k)]
+  | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), None, k)]
   | suspendE e str  => let s1 := (forward env [(emp, cur, k)] e) in
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
@@ -473,9 +505,9 @@ match eff with
 | emp          => ""
 | singleton ins=> string_of_instance ins
 | waiting   s  => s ++ "?"
-| cons e1 e2   => string_of_effects e1 ++ "." ++ string_of_effects e2
-| disj e1 e2   => string_of_effects e1 ++ "\/" ++ string_of_effects e2
-| parEff e1 e2 => string_of_effects e1 ++ "||" ++ string_of_effects e2
+| cons e1 e2   =>  "(" ++ string_of_effects e1 ++ "." ++ string_of_effects e2 ++ ")"
+| disj e1 e2   =>  "(" ++ string_of_effects e1 ++ "\/" ++ string_of_effects e2 ++ ")"
+| parEff e1 e2 =>  "(" ++ string_of_effects e1 ++ "||" ++ string_of_effects e2 ++ ")"
 | kleene e     =>  "(" ++ string_of_effects e ++ ")^*"
 end.
 
@@ -568,7 +600,17 @@ Definition testPal : expression :=
 Definition testPal1 : expression :=
   fork (testPause) par (fork testAsync  par (emit "H")).
 
-Compute (forward_Shell testPal1).
+Definition testPal2 : expression :=
+  fork (emit "A";pause;emit"D") par (await "D").
+
+Definition testAsyncSeq : expression :=
+  async testSeq with "S"; emit "L".
+
+Definition testAsyncSeq1 : expression :=
+  async testSeq with "S"; await "S" ; emit "K".
+
+Compute (forward_Shell testPal2).
+
 
 
 
