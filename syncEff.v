@@ -10,6 +10,26 @@ Definition signal_status : Type :=  (string * signalState).
 
 Definition instance : Type :=  (list signal_status).
 
+Definition string_of_signal_status (pair:signal_status) : string :=
+let (name, status) := pair in
+(match status with
+| zero => "!"
+| one  => ""
+end) ++  name.
+
+Definition string_of_instance (ins: instance): string :=
+"{" ++
+(
+let fix helper (li:instance) : string :=
+match li with
+| [] => ""
+| [x]  => string_of_signal_status x
+| x::xs =>  string_of_signal_status x ++ helper xs
+end in
+helper ins
+)
+++ "}".
+
 Inductive syncEff : Type :=
 | bot
 | emp
@@ -191,6 +211,7 @@ match eff with
 | cons bot  _  => bot
 | cons emp e   => normal e
 | cons e emp   => normal e
+| cons (kleene e) _ =>  kleene e
 | cons e1 e2   => cons (normal e1) (normal e2)
 | disj bot e   => normal e
 | disj e bot   => normal e
@@ -298,18 +319,48 @@ List.flat_map (fun (pair:state) =>
                       List.flat_map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
                                   if kE then [pairE]
-                                  else  (forward env [pairE] h)) s1
-  | loopE e         => [pair]
+                                  else  (forward env [(hisE, curE, true)] h)) s1
+  | loopE e         => let s1 := (forward env [(emp, cur, k)] e) in
+                       let s2 := (forward env s1 e) in
+                       List.map (fun (pairE:state) =>
+                                  let '(hisE, curE, kE) := pairE in
+                                  if  Bool.eqb kE false then pairE
+                                  else (cons his (kleene hisE), [], true)
+                                ) s2
   end
 ) s.
 
 
 
+Fixpoint string_of_effects (eff:syncEff) : string :=
+match eff with
+| bot          => "_|_"
+| emp          => ""
+| singleton ins=> string_of_instance ins
+| waiting   s  => s ++ "?"
+| cons e1 e2   => string_of_effects e1 ++ "." ++ string_of_effects e2
+| disj e1 e2   => string_of_effects e1 ++ "\/" ++ string_of_effects e2
+| parEff e1 e2 => string_of_effects e1 ++ "||" ++ string_of_effects e2
+| kleene e     =>  "(" ++ string_of_effects e ++ ")^*"
+end.
+
+Definition state_to_eff (s:state) : syncEff :=
+let '(his, cur, _) := s in
+normal (cons his (singleton cur)).
+
+Definition states_to_eff (states:states) : syncEff :=
+normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
+
+Definition forward_Shell (expr:expression) : string :=
+  states_to_eff (forward [] [(emp, [], true)] expr).
+
 
 Definition testP1 : expression :=
   emit "A"; emit "B"; pause; emit "C".
 
-Compute (forward [] [( star {{ [!"A"; !"B"] }}, [], true)] testP1).
+
+
+Compute (forward_Shell testP1).
 
 
 (*
