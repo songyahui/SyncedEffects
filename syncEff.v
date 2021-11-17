@@ -320,6 +320,8 @@ match ins with
   end) in aux insIn
 end.
 
+
+
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
 List.flat_map (fun (pair:state) =>
   let '(his, cur, k) := pair in
@@ -359,12 +361,20 @@ List.flat_map (fun (pair:state) =>
                                     (forward env [(hisE, curE, true)] h)
                                   else  [pairE]) s1
   | loopE e         => let s1 := (forward env [(emp, cur, k)] e) in
-                       let s2 := (forward env s1 e) in
+                       let newState := (List.map (fun (pairE:state) =>
+                                                       let '(_, curE, kE) := pairE in
+                                                       (emp, curE, kE)
+                                                        ) s1) in 
+                       let hisList := (List.map (fun (pairE:state) =>
+                                                       let '(hisE, _, _) := pairE in
+                                                       hisE) s1) in 
+                       let s2 := (forward env newState e) in
                        List.map (fun (pairE:state) =>
-                                  let '(hisE, curE, kE) := pairE in
+                                  let (tuple, hisS1) := pairE in
+                                  let '(hisE, curE, kE) := tuple in 
                                   if  Bool.eqb kE false then pairE
-                                  else (cons his (kleene hisE), None, true)
-                                ) s2
+                                  else (cons (cons his hisS1) (kleene hisE), None, true)
+                                ) (List.combine s2 hisList)
   end
 ) s.
 
@@ -403,6 +413,35 @@ Definition testSeq : expression :=
   pause;
   emit "D".
 
+
+Definition testSeq1 : expression :=
+  emit "A";
+  emit "B";
+  pause;
+  emit "C";
+  pause;
+  emit "D";
+  pause.
+
+Definition testSeq2 : expression :=
+  pause;
+  emit "A";
+  emit "B";
+  pause;
+  emit "C";
+  pause;
+  emit "D";
+  pause.
+
+Definition testSeq3 : expression :=
+  pause;
+  emit "A";
+  emit "B";
+  pause;
+  emit "C";
+  pause;
+  emit "D".
+
 Definition testRaise : expression :=
   raise "T".
 
@@ -410,7 +449,7 @@ Definition testTry : expression :=
   try testRaise catch "T1" with testSeq.
 
 Definition testTry1 : expression :=
-  try testRaise catch "T" with testTry.
+  try testRaise catch "T" with testSeq.
 
 
 Definition testPresent : expression :=
@@ -428,12 +467,16 @@ Definition testAsync : expression :=
   async testSeq with "S".
 
 
+Definition testLoop1 : expression :=
+  (loop testSeq3).
 
 
 
 
-Compute (forward_Shell testTry1).
+Compute (forward_Shell testLoop1).
 
+{A, B} .{C}.{D}
+{A, B, D} {C}
 
 (*
 
