@@ -3,6 +3,8 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Open Scope string_scope.
 
+Definition numEvent := 10.
+
 (* the default value of a siganl is absent *)
 Inductive signalState : Type := zero | one.
 
@@ -244,7 +246,7 @@ in aux records.
 Require Import Coq.Program.Wf.
 
 Definition leftHy  (records :list instance) : nat :=
-1000 - (List.length records).
+numEvent * numEvent - (List.length records).
 
 Program Fixpoint fixpoint (records :list instance) (eff1 eff2: syncEff) {measure (leftHy records)} : syncEff :=
 match eff1 with
@@ -268,6 +270,8 @@ match eff1 with
      normal (List.fold_left (fun acc a => disj acc a) effList bot)
   end)
 end.
+
+Next Obligation. Proof. Admitted.
 
 Local Open Scope nat_scope.
 
@@ -297,14 +301,33 @@ Compute (max_k 10 5).
 
 Compute (natEq 4 4).
 
-Definition mergeCurrent (c: option instance) (eff:syncEff): syncEff :=
+Definition mergeCurrentToEff (c: option instance) (eff:syncEff): syncEff :=
 match c with
 | None => eff
 | Some i =>
-  let fst := fst eff in
-  let effList := List.map (fun f => cons (singleton (List.app f i)) (derivitive eff f)) fst in
-  normal (List.fold_left (fun acc a => disj acc a) effList bot)
+  match normal eff with
+  | emp => singleton i
+  | _   =>
+    let fst := fst eff in
+    let effList := List.map (fun f => cons (singleton (List.app f i)) (derivitive eff f)) fst in
+    normal (List.fold_left (fun acc a => disj acc a) effList bot)
+  end
 end.
+
+Definition mergeCurrent (c1 c2: option instance) : option instance :=
+match c1, c2 with
+| None, None => None
+| Some i1, None => c1
+| None, _ => c2
+| Some i1, Some i2 => Some (List.app i1 i2)
+end.
+
+
+
+(*
+"{}.{A}"
+"{A,B,H}.{C}.{D,S}"
+*)
 
 
 Program Fixpoint fixpointState (records :list instance) (s1 s2:state) {measure (leftHy records)} : states :=
@@ -312,12 +335,11 @@ let '(eff1, cur1, k1) := s1 in
 let '(eff2, cur2, k2) := s2 in
 let f1s := fst eff1 in
 let f2s := fst eff2 in
-match normal eff1 with
-| emp => [(cons (recordsToEff records) (mergeCurrent cur1 eff2), cur2, k2)]
-| _   =>
-  (match normal eff2 with
-   | emp => [(cons (recordsToEff records) (mergeCurrent cur2 eff1),  cur1, k1)]
-   | _ =>
+match List.length f1s, List.length f2s with
+| 0, 0 => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
+| 0, _   => [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
+| _, 0   => [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
+| _,_      =>
      let zipFst := zip_list f1s f2s in
      List.flat_map (fun (pair: (instance * instance )) =>
                       let (f1, f2):=pair in
@@ -327,11 +349,13 @@ match normal eff1 with
                       if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
                       else (fixpointState (merge :: records) (der1, cur1, k1) (der2, cur2, k2))
                    ) zipFst
-   end)
 end.
 
 
 Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
 
 Definition parallelMergeState (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
@@ -388,7 +412,7 @@ List.flat_map (fun (pair:state) =>
   match expr with
   | nothingE        => [pair]
   | pauseE          => [(cons his (instanceToEff cur), Some [], k)]
-  | raiseE n      => [(his, cur, S k)]
+  | raiseE n        => [(his, cur, S k)]
   | emitE str       => [(his, appendCurrent cur (str, one), k)]
   | localDelE str e => let newEnv   := (str)::env in
                        forward newEnv [pair] e
@@ -457,7 +481,7 @@ end.
 
 Definition state_to_eff (s:state) : syncEff :=
 let '(his, cur, k) := s in
-if greaterThan k 0 then bot 
+if greaterThan k 0 then bot
 else normal (cons his (instanceToEff cur)).
 
 Definition states_to_eff (states:states) : syncEff :=
@@ -532,13 +556,21 @@ Definition testLoop1 : expression :=
   (loop testSeq).
 
 
+Definition testPause : expression :=
+  pause; pause; emit "P".
+
 Definition testAsync : expression :=
   async testSeq with "S".
 
 Definition testPal : expression :=
-  fork testSeq1  par (emit "H").
+  fork testAsync  par (emit "H").
 
-Compute (forward_Shell testPal).
+Definition testPal1 : expression :=
+  fork (testPause) par (fork testAsync  par (emit "H")).
+
+Compute (forward_Shell testPal1).
+
+
 
 
 (*
