@@ -88,20 +88,18 @@ Notation "E1 ; E2" := (seqE E1 E2)  (at level 200, right associativity).
 
 Notation "'fork' E1 'par' E2" := (parE E1 E2)  (at level 80, right associativity).
 
-Notation "'check' A 'then' E1 'else' E2" := (ifElseE A E1 E2)  (at level 200, right associativity).
+Notation "'present' A 'then' E1 'else' E2" := (ifElseE A E1 E2)  (at level 200, right associativity).
 Notation "'loop' E" := (loopE E) (at level 200, right associativity).
 
 Notation "'suspend' E 'when' S" := (suspendE E S) (at level 200, right associativity).
 
-Notation "'async' E S" := (asyncE E S) (at level 200, right associativity).
+Notation "'async' E 'with' S" := (asyncE E S) (at level 200, right associativity).
 
 Notation "'await' S" := (awaitE S) (at level 200, right associativity).
 
 Notation "'raise' T" := (raiseE T) (at level 200, right associativity).
 
 Notation "'try' E1 'catch' S 'with' E2" := (trycatchE E1 S E2) (at level 200, right associativity).
-
-
 
 
 Definition envenvironment : Type := (list string).
@@ -300,6 +298,27 @@ match cur with
 | Some ins => Some (List.app ins [i])
 end.
 
+Fixpoint extendEff (eff:syncEff) (i:signal_status): syncEff :=
+match eff with
+| singleton ins=> singleton (List.app ins [i])
+| cons e1 e2   => cons (extendEff e1 i) (extendEff e2 i)
+| disj e1 e2   => disj (extendEff e1 i) (extendEff e2 i)
+| parEff e1 e2 => parEff (extendEff e1 i) (extendEff e2 i)
+| kleene e     =>  kleene (extendEff e i)
+| _            => eff
+end.
+
+Definition existRaise (s: string) (ins: option instance)  : bool :=
+match ins with
+| None => false
+| Some insIn =>
+  let fix aux insA : bool :=
+  (match insA with
+   | [] => false
+   | (name, one) :: xs => if eqb name s then true else aux xs
+   | _ :: xs           => aux xs
+  end) in aux insIn
+end.
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
 List.flat_map (fun (pair:state) =>
@@ -318,8 +337,6 @@ List.flat_map (fun (pair:state) =>
                                  let '(hisE, curE, kE) := pairE in
                                  if Bool.eqb kE false then [pairE]
                                  else forward env [pairE] e2 ) s1
-
-
   | parE e1 e2      => let s1 := (forward env [pair] e1) in
                       let s2 := (forward env s1 e2) in
                       parallelMergeState s1 s2
@@ -331,15 +348,16 @@ List.flat_map (fun (pair:state) =>
                                   let '(hisE, curE, kE) := pairE in
                                   (hisE, appendCurrent curE (str, one), kE)) s1
   | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), Some [], k)]
-  | suspendE e str  => let s1 := (forward env [pair] e) in
+  | suspendE e str  => let s1 := (forward env [(emp, cur, k)] e) in
                       List.map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
-                                  (hisE, appendCurrent curE (str, zero), kE)) s1
+                                  (cons his (extendEff hisE (str, zero)), appendCurrent curE (str, zero), kE)) s1
   | trycatchE e s h => let s1 := (forward env [pair] e) in
                       List.flat_map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
-                                  if kE then [pairE]
-                                  else  (forward env [(hisE, curE, true)] h)) s1
+                                  if (Bool.eqb kE false) && (existRaise s curE)  then
+                                    (forward env [(hisE, curE, true)] h)
+                                  else  [pairE]) s1
   | loopE e         => let s1 := (forward env [(emp, cur, k)] e) in
                        let s2 := (forward env s1 e) in
                        List.map (fun (pairE:state) =>
@@ -377,19 +395,44 @@ Definition forward_Shell (expr:expression) : string :=
           forward [] [(emp, None, true)] expr)).
 
 
-Definition testP1 : expression :=
+Definition testSeq : expression :=
   emit "A";
   emit "B";
   pause;
-  emit "C".
+  emit "C";
+  pause;
+  emit "D".
 
-Definition testP2 : expression :=
-  await "A";
-  emit "A".
+Definition testRaise : expression :=
+  raise "T".
+
+Definition testTry : expression :=
+  try testRaise catch "T1" with testSeq.
+
+Definition testTry1 : expression :=
+  try testRaise catch "T" with testTry.
+
+
+Definition testPresent : expression :=
+  present "A" then testSeq else (emit "B").
+
+Definition testLoop : expression :=
+  loop testSeq.
+
+
+Definition testSuspend : expression :=
+  suspend testSeq when "S".
+
+
+Definition testAsync : expression :=
+  async testSeq with "S".
 
 
 
-Compute (forward_Shell testP1).
+
+
+
+Compute (forward_Shell testTry1).
 
 
 (*
