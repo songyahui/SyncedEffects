@@ -24,7 +24,7 @@ let fix helper (li:instance) : string :=
 match li with
 | [] => ""
 | [x]  => string_of_signal_status x
-| x::xs =>  string_of_signal_status x ++ helper xs
+| x::xs =>  string_of_signal_status x ++ "," ++ helper xs
 end in
 helper ins
 )
@@ -173,6 +173,16 @@ Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
   | y :: ys => if exist y ins1 then instanceEntail ins1 ys else false
   end.
 
+Definition instanceEntailShell (ins1 ins2 : option instance) : bool :=
+match ins1 with
+| None => true
+| Some ins1In =>
+  (match ins2 with
+   | None => false
+   | Some ins2In => instanceEntail ins1In ins2In
+  end)
+end.
+
 Compute (instanceEntail [("s", zero); ("s1", one)] [("s", one)]).
 
 Compute (instanceEntail [] [("s", one)]).
@@ -225,23 +235,23 @@ Compute (fst (kleene (singleton [("S", one)]))).
 Compute (normal (derivitive (kleene (singleton [("S", one)])) [("K", one)])).
 
 (* last argument is the completion code true -> normal, flase -> not completed*)
-Definition state : Type := (syncEff * instance * bool).
+Definition state : Type := (syncEff * (option instance) * bool).
 
 Definition states : Type := list state.
 
-Fixpoint effectToStates (*cut function *) (eff:syncEff): list (syncEff * instance) :=
+Fixpoint effectToStates (*cut function *) (eff:syncEff): list (syncEff * (option instance)) :=
 match eff with
 | bot          => []
-| emp          => [(emp, [])]
-| singleton i  => [(emp, i)]
-| waiting   s  => [(eff, [])] (* S? = (not S)^*.(S) *)
+| emp          => [(emp, None)]
+| singleton i  => [(emp, Some i)]
+| waiting   s  => [(eff, Some [])] (* S? = (not S)^*.(S) *)
 | disj e1 e2   => List.app (effectToStates e1) (effectToStates e2)
 | cons e1 e2   => let ss := effectToStates e2 in
-                  List.map (fun (pair:(syncEff * instance)) =>
+                  List.map (fun (pair:(syncEff * (option instance))) =>
                               let (his, cur) := pair in
                               (cons e1 his, cur)) ss
 | kleene e     => let ss := effectToStates e in
-                  List.map (fun (pair:(syncEff * instance)) =>
+                  List.map (fun (pair:(syncEff * (option instance))) =>
                               let (his, cur) := pair in
                               (cons eff his, cur)) ss
 | parEff e1 e2 => [] (* this should not be here ... *)
@@ -260,7 +270,11 @@ let f1s := fst eff1 in
                          cons (singleton (List.app f1 f2)) tail) zipFst in
     normal (List.fold_left (fun acc a => disj acc a) effList bot).
 
-
+Definition instanceToEff (cur: option instance) : syncEff :=
+match cur with
+| None => emp
+| Some ins => singleton ins
+end.
 
 Definition parallelMergeState (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
@@ -269,16 +283,22 @@ List.flat_map (fun (pair:(state * state)) =>
   let '(eff1, cur1, k1) := s1 in
   let '(eff2, cur2, k2) := s2 in
   let fulltraces : syncEff :=
-    let trace1 := normal (cons eff1 (singleton cur1)) in
-    let trace2 := normal (cons eff2 (singleton cur2)) in
+    let trace1 := normal (cons eff1 (instanceToEff cur1)) in
+    let trace2 := normal (cons eff2 (instanceToEff cur2)) in
     parallelMergeEffects eff1 eff2
   in
-  List.map (fun (p:((syncEff * instance))) =>
+  List.map (fun (p:((syncEff * (option instance)))) =>
               let (his, cur) := p in
-              if (Bool.eqb k1 false) || (Bool.eqb k2 false) then (his, cur, false) else  (his, cur, true) 
+              if (Bool.eqb k1 false) || (Bool.eqb k2 false) then (his, cur, false) else  (his, cur, true)
            ) (effectToStates (normal fulltraces))
 
 ) mix_states.
+
+Definition appendCurrent (cur: option instance) (i:signal_status): option instance :=
+match cur with
+| None => Some [i]
+| Some ins => Some (List.app ins [i])
+end.
 
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
@@ -288,9 +308,9 @@ List.flat_map (fun (pair:state) =>
   else
   match expr with
   | nothingE        => [pair]
-  | pauseE          => [(cons his (singleton cur), [], k)]
-  | raiseE str      => [(his, (str, one)::  cur, false)]
-  | emitE str       => [(his, (str, one)::  cur, k)]
+  | pauseE          => [(cons his (instanceToEff cur), Some [], k)]
+  | raiseE str      => [(his, appendCurrent cur (str, one), false)]
+  | emitE str       => [(his, appendCurrent cur (str, one), k)]
   | localDelE str e => let newEnv   := (str)::env in
                       forward newEnv [pair] e
   | seqE e1 e2      => let s1 := (forward env [pair] e1) in
@@ -303,18 +323,18 @@ List.flat_map (fun (pair:state) =>
   | parE e1 e2      => let s1 := (forward env [pair] e1) in
                       let s2 := (forward env s1 e2) in
                       parallelMergeState s1 s2
-  | ifElseE s e1 e2 => if instanceEntail cur [(s, one)]
+  | ifElseE s e1 e2 => if instanceEntailShell cur (Some [(s, one)])
                       then forward env [pair] e1
                       else forward env [pair] e2
   | asyncE e str    => let s1 := (forward env [pair] e) in
                       List.map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
-                                  (hisE, (str, one)::curE, kE)) s1
-  | awaitE s        => [(cons his (cons (singleton cur) (waiting s)), [], k)]
+                                  (hisE, appendCurrent curE (str, one), kE)) s1
+  | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), Some [], k)]
   | suspendE e str  => let s1 := (forward env [pair] e) in
                       List.map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
-                                  (hisE, (str, zero)::curE, kE)) s1
+                                  (hisE, appendCurrent curE (str, zero), kE)) s1
   | trycatchE e s h => let s1 := (forward env [pair] e) in
                       List.flat_map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
@@ -325,7 +345,7 @@ List.flat_map (fun (pair:state) =>
                        List.map (fun (pairE:state) =>
                                   let '(hisE, curE, kE) := pairE in
                                   if  Bool.eqb kE false then pairE
-                                  else (cons his (kleene hisE), [], true)
+                                  else (cons his (kleene hisE), None, true)
                                 ) s2
   end
 ) s.
@@ -346,17 +366,26 @@ end.
 
 Definition state_to_eff (s:state) : syncEff :=
 let '(his, cur, _) := s in
-normal (cons his (singleton cur)).
+normal (cons his (instanceToEff cur)).
 
 Definition states_to_eff (states:states) : syncEff :=
 normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
 
 Definition forward_Shell (expr:expression) : string :=
-  states_to_eff (forward [] [(emp, [], true)] expr).
+  string_of_effects(
+      states_to_eff(
+          forward [] [(emp, None, true)] expr)).
 
 
 Definition testP1 : expression :=
-  emit "A"; emit "B"; pause; emit "C".
+  emit "A";
+  emit "B";
+  pause;
+  emit "C".
+
+Definition testP2 : expression :=
+  await "A";
+  emit "A".
 
 
 
