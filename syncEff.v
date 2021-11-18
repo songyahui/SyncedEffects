@@ -35,6 +35,11 @@ Inductive expression : Type :=
 | raise    (s:string)
 | trycatch (e:expression) (s:string) (handler:expression)
 .
+(*
+
+differnce: sync - presnet valid for one time cycle 
+           async- manuelly turn off the present signals.
+*)
 
 Definition envenvironment : Type := (list string).
 
