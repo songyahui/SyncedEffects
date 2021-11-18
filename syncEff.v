@@ -243,7 +243,7 @@ Fixpoint normal (eff:syncEff) : syncEff :=
 match eff with
 | bot          => eff
 | emp          => eff
-| singleton ins=> if controdict ins then bot else singleton (remove_dup ins)
+| singleton ins=> eff(*if controdict ins then bot else singleton (remove_dup ins)*)
 | waiting   _  => eff
 | cons bot  _  => bot
 | cons emp e   => normal e
@@ -332,7 +332,18 @@ match eff1 with
      let f1s := fst eff1 in
      let f2s := fst eff2 in
      let zipFst := zip_list f1s f2s in
-     let effList : list (option syncEff):= 
+     let effList : list (syncEff):= 
+         List.map (fun (pair: (instance * instance )) =>
+            let (f1, f2):=pair in
+            let merge := (List.app f1 f2) in
+            let der1 := (normal (derivitive eff1 f1)) in
+            let der2 := (normal (derivitive eff2 f2)) in
+            if (reoccur records merge) then (formloop records merge)
+            else (fixpoint (merge :: records) der1 der2)
+            
+         ) zipFst in
+     normal (List.fold_left (fun acc a => disj acc a) effList bot)
+     (*let effList : list (option syncEff):= 
          List.map (fun (pair: (instance * instance )) =>
             let (f1, f2):=pair in
             let merge := (tryToMerge f1 f2) in
@@ -350,6 +361,7 @@ match eff1 with
           | None => acc 
           | Some a => disj acc a
           end ) effList bot)
+*)
   end)
 end.
 
@@ -423,7 +435,15 @@ match normal eff1, normal eff2(*List.length f1s, List.length f2s*) with
 | _, emp   => [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
 | _,_      =>
      let zipFst := zip_list f1s f2s in
-     let stateListRow: list (option state) :=
+     List.flat_map (fun (pair: (instance * instance )) =>
+          let (f1, f2):=pair in
+          let merge := (List.app f1 f2) in
+          let der1 := (normal (derivitive eff1 f1)) in
+          let der2 := (normal (derivitive eff2 f2)) in
+          if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
+          else (fixpointState (merge :: records) (der1, cur1, k1) (der2, cur2, k2))
+     ) zipFst
+     (*let stateListRow: list (option state) :=
          List.flat_map (fun (pair: (instance * instance )) =>
              let (f1, f2):=pair in
              let merge := (tryToMerge f1 f2) in
@@ -440,6 +460,7 @@ match normal eff1, normal eff2(*List.length f1s, List.length f2s*) with
         match a with 
         | None => acc
         | Some s => List.app acc [s] end) stateListRow []
+*)
     
 end.
 
@@ -747,13 +768,13 @@ Definition testAsync : expression :=
   async testSeq with "S".
 
 Definition testPal : expression :=
-  fork testAsync  par (emit "H").
+  fork testSeq  par (await "C").
 
 Definition testPal1 : expression :=
   fork (testPause) par (fork testAsync  par (emit "H")).
 
 Definition testPal2 : expression :=
-   fork (emit "A";pause;emit"D") par (await "C").
+   fork (emit "C") par (await "C").
 
 Definition testPal3 : expression :=
    fork (emit "D";pause;emit"D") par (await "D").
@@ -764,7 +785,7 @@ Definition testAsyncSeq : expression :=
 Definition testAsyncSeq1 : expression :=
   async testSeq with "S"; await "S" ; emit "K".
 
-Compute (forward_Shell testPal3).
+Compute (forward_Shell testPal2).
 
 
 
