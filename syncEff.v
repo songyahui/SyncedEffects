@@ -703,12 +703,12 @@ let f2s: list instance := fst eff2 in
 match normal eff1, normal eff2 with
 | emp, emp => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
 | emp, _   =>
-  if geb k1 0 || geb k1 k2 
+  if greaterThan k1 0 
   then List.map (fun (f:instance) =>
                    (recordsToEff records, mergeCurrent cur1 (Some f), k1)) f2s
   else [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
 | _, emp   =>
-  if geb k2 0|| geb k2 k1 
+  if greaterThan k2 0
   then List.map (fun (f:instance) =>
                    (recordsToEff records, mergeCurrent cur2 (Some f), k2)) f1s
   else [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
@@ -718,8 +718,8 @@ match normal eff1, normal eff2 with
      List.flat_map (fun (pair: (instance * instance )) =>
           let (f1, f2):=pair in
           let merge := (List.app f1 f2) in
-          let der1 := (normal (derivitive eff1 f1)) in
-          let der2 := (normal (derivitive eff2 f2)) in
+          let der1 := if Nat.eqb (List.length f1) 0 then (normal (derivitive eff1 merge)) else  (normal (derivitive eff1 f1)) in 
+          let der2 := if Nat.eqb (List.length f2) 0 then (normal (derivitive eff2 merge))  else (normal (derivitive eff2 f2)) in
           if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
           else (fixpointState (List.app records [merge]) (der1, cur1, k1) (der2, cur2, k2))
      ) zipFst
@@ -1056,7 +1056,11 @@ Definition testPal0 : expression :=
 Definition testPal4 : expression :=
    fork (emit "C";pause;emit"D"; raise 3) par (emit "A"; raise 2).
 
-Compute (forward_Shell testPal4).
+
+Definition testPal5 : expression :=
+   async testSeq with "E"; await "C";await "E";await "D".
+
+Compute (forward_Shell testPal5).
 
 
 
