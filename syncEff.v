@@ -12,6 +12,8 @@ Definition signal_status : Type :=  (string * signalState).
 
 Definition instance : Type :=  (list signal_status).
 
+
+
 Definition string_of_signal_status (pair:signal_status) : string :=
 let (name, status) := pair in
 (match status with
@@ -19,6 +21,14 @@ let (name, status) := pair in
 | one  => ""  ++  name
 | undef => ""
 end).
+
+Definition compareStatus (s1 s2: signalState): bool :=
+match (s1, s2) with
+| (zero, zero)   => true
+| (one, one) => true
+| (undef, undef) => true
+| _                  => false
+end.
 
 Definition string_of_instance (ins: instance): string :=
 "{" ++
@@ -29,9 +39,11 @@ match li with
 | [x]  => string_of_signal_status x
 | x::xs =>  string_of_signal_status x ++ "," ++ helper xs
 end in
-helper ins
+helper (List.filter (fun (pair:signal_status) => 
+  let (name, status) := pair in
+  Bool.eqb (compareStatus undef status) false) ins)
 )
-++ "}".
+++ "}". 
 
 Inductive syncEff : Type :=
 | bot
@@ -130,7 +142,7 @@ match eff with
 | bot          => []
 | emp          => []
 | singleton i  => [i]
-| waiting   s  => [[(s, one)]] ++ [[(s, zero)]]
+| waiting   s  => [([])] (*[[(s, one)]] ++ [[(s, zero)]]*)
 | disj e1 e2   => fst e1 ++ fst e2
 | cons e1 e2   => if nullable e1 then fst e1 ++ fst e2
                   else fst e1
@@ -140,13 +152,7 @@ match eff with
 | kleene e     => fst e
 end.
 
-Definition compareStatus (s1 s2: signalState): bool :=
-match (s1, s2) with
-| (zero, zero)   => true
-| (one, one) => true
-| (undef, undef) => true
-| _                  => false
-end.
+
 
 Fixpoint existSigIns (sig:signal_status) (ins:instance) : bool :=
      let (name, status) := sig in
@@ -185,7 +191,7 @@ match eff with
 | bot          => bot
 | emp          => bot
 | singleton i  => if instanceEntail f i then emp else bot
-| waiting   s  => if instanceEntail ([(s, one)]) f then emp else waiting s
+| waiting   s  => if instanceEntail f ([(s, one)]) then emp else waiting s
 | cons e1 e2   => if nullable e1 then disj (cons (derivitive e1 f) e2)  (derivitive e2 f)
                   else cons (derivitive e1 f) e2
 | disj e1 e2   => disj (derivitive e1 f) (derivitive e2 f)
@@ -200,6 +206,8 @@ match eff with
                                   else bot) zipFst in
                   List.fold_left (fun acc t => disj acc t) deris bot
 end.
+
+Compute (derivitive (waiting "D") [("D", undef);( "D", one)] ).
 
 Definition controdictStatus (s1 s2: signalState): bool :=
 match (s1, s2) with
@@ -226,7 +234,7 @@ Fixpoint remove_dup (ins: instance) : instance :=
 match ins with
 | [] => []
 | [x] => [x]
-| y :: ys => if existSigIns y ins then remove_dup ys else y :: (remove_dup ys)
+| y :: ys => if existSigIns y ys then remove_dup ys else y :: (remove_dup ys)
 end.
 
 
@@ -286,6 +294,34 @@ Require Import Coq.Program.Wf.
 Definition leftHy  (records :list instance) : nat :=
 numEvent * numEvent - (List.length records).
 
+Definition conflitStatus (s1 s2: signalState): bool :=
+match (s1, s2) with
+| (zero, zero)   => false
+| (one, one)     => false
+| (undef, undef) => false
+| _              => true
+end.
+
+Definition tryToMerge (i1 i2: instance) : option instance :=
+  let merge := List.app i1 i2 in 
+  let fix helper (li:instance) (name:string) (status:signalState) : bool :=
+    match li with 
+    | [] => false 
+    | (name', status'):: xs => if eqb name name' && (conflitStatus status status')
+                         then true else helper xs name status
+    end in
+  let fix hasConflits (li:instance): bool :=
+    match li with 
+    | [] => false 
+    | (name, status):: xs => if helper xs name status
+                         then true else hasConflits xs
+    end
+  in 
+  if hasConflits merge then None else Some merge.
+
+Compute (tryToMerge [("A", one)] [("B", zero)] ).
+    
+
 Program Fixpoint fixpoint (records :list instance) (eff1 eff2: syncEff) {measure (leftHy records)} : syncEff :=
 match eff1 with
 | emp => cons (recordsToEff records) eff2
@@ -296,16 +332,24 @@ match eff1 with
      let f1s := fst eff1 in
      let f2s := fst eff2 in
      let zipFst := zip_list f1s f2s in
-     let effList :=
+     let effList : list (option syncEff):= 
          List.map (fun (pair: (instance * instance )) =>
             let (f1, f2):=pair in
-            let merge := (List.app f1 f2) in
-            let der1 := (normal (derivitive eff1 f1)) in
-            let der2 := (normal (derivitive eff2 f2)) in
-            if (reoccur records merge) then formloop records merge
-            else (fixpoint (merge :: records) der1 der2)
+            let merge := (tryToMerge f1 f2) in
+            match merge with 
+            | None => None
+            | Some merge =>
+                let der1 := (normal (derivitive eff1 f1)) in
+                let der2 := (normal (derivitive eff2 f2)) in
+                if (reoccur records merge) then Some (formloop records merge)
+                else Some (fixpoint (merge :: records) der1 der2)
+            end
          ) zipFst in
-     normal (List.fold_left (fun acc a => disj acc a) effList bot)
+     normal (List.fold_left (fun acc a => 
+          match a with 
+          | None => acc 
+          | Some a => disj acc a
+          end ) effList bot)
   end)
 end.
 
@@ -373,26 +417,95 @@ let '(eff1, cur1, k1) := s1 in
 let '(eff2, cur2, k2) := s2 in
 let f1s := fst eff1 in
 let f2s := fst eff2 in
-match List.length f1s, List.length f2s with
-| 0, 0 => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
-| 0, _   => [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
-| _, 0   => [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
+match normal eff1, normal eff2(*List.length f1s, List.length f2s*) with
+| emp, emp => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
+| emp, _   => [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
+| _, emp   => [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
 | _,_      =>
      let zipFst := zip_list f1s f2s in
-     List.flat_map (fun (pair: (instance * instance )) =>
-                      let (f1, f2):=pair in
-                      let merge := (List.app f1 f2) in
-                      let der1 := (normal (derivitive eff1 f1)) in
-                      let der2 := (normal (derivitive eff2 f2)) in
-                      if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
-                      else (fixpointState (merge :: records) (der1, cur1, k1) (der2, cur2, k2))
-                   ) zipFst
+     let stateListRow: list (option state) :=
+         List.flat_map (fun (pair: (instance * instance )) =>
+             let (f1, f2):=pair in
+             let merge := (tryToMerge f1 f2) in
+             match merge with 
+             | None => [None]
+             | Some merge =>
+                  let der1 := (normal (derivitive eff1 f1)) in
+                  let der2 := (normal (derivitive eff2 f2)) in
+                  if (reoccur records merge) then [(Some (formloop records merge, None, max_k k1 k2))]
+                  else (List.map (fun a=> Some a)
+                        (fixpointState (merge :: records) (der1, cur1, k1) (der2, cur2, k2)))
+             end) zipFst in 
+     List.fold_left (fun acc a => 
+        match a with 
+        | None => acc
+        | Some s => List.app acc [s] end) stateListRow []
+    
 end.
 
 
+
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
 
 
 Definition parallelMergeState (states1 states2: states) : states :=
@@ -438,14 +551,12 @@ Definition initalCur (env:envenvironment) : instance :=
 List.map (fun a => (a, undef)) env.
 
 
-这个signal status , undef, one, zero 搞不清楚。 
-
 Definition setSigInCur (env:envenvironment) (cur: option instance) (ss:signal_status): option instance :=
 let (name', status') := ss in
 let fix aux (li:instance) : instance :=
     match li with
     | [] => [(ss)]
-    | (name, status) :: xs => if eqb name name' && compareStatus status status'
+    | (name, status) :: xs => if eqb name name' && (compareStatus status status' || compareStatus status undef)
                               then ss :: xs
                               else (name, status) :: (aux xs)
     end
@@ -454,6 +565,8 @@ match cur with
 | None => Some (aux (initalCur env))
 | Some insIn => Some (aux insIn)
 end.
+
+Compute (setSigInCur ["A";"B";"C"] (setSigInCur ["A";"B";"C"] None ("A", one)) ("A", one)).
 
 Definition appendSigInCur (env:envenvironment) (cur: option instance) (ss:signal_status): option instance :=
 match cur with
@@ -640,7 +753,10 @@ Definition testPal1 : expression :=
   fork (testPause) par (fork testAsync  par (emit "H")).
 
 Definition testPal2 : expression :=
-  fork (emit "A";pause;emit"D") par (await "D").
+   fork (emit "A";pause;emit"D") par (await "C").
+
+Definition testPal3 : expression :=
+   fork (emit "D";pause;emit"D") par (await "D").
 
 Definition testAsyncSeq : expression :=
   async testSeq with "S"; emit "L".
@@ -648,7 +764,7 @@ Definition testAsyncSeq : expression :=
 Definition testAsyncSeq1 : expression :=
   async testSeq with "S"; await "S" ; emit "K".
 
-Compute (forward_Shell testSeq).
+Compute (forward_Shell testPal3).
 
 
 
