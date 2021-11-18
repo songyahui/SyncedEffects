@@ -4,6 +4,7 @@ Import ListNotations.
 Open Scope string_scope.
 
 Require Import Coq.Program.Wf.
+Require Import Coq.Arith.Plus.
 
 Definition numEvent := 10.
 
@@ -193,6 +194,15 @@ Fixpoint leb (n m : nat) : bool :=
   | _  , 0   => false
   | S n, S m => leb n m
   end.
+
+Fixpoint geb (n m : nat) : bool :=
+  match n, m with
+  | _  , 0   => true
+  | 0  , _   => false
+  | S n, S m => geb n m
+  end.
+
+Compute (geb 3 4).
 
 Definition greaterThan (n m: nat) : bool  :=
   match (leb n m) with
@@ -397,7 +407,7 @@ Next Obligation. Proof. Admitted.
 
 
 Definition normal (effIn:syncEff) : syncEff :=
-  normalIn effIn 6
+  normalIn effIn 4
 .
 
 
@@ -431,14 +441,31 @@ match n with
 | _ => "other number"
 end.
 
+Definition instanceToEff (cur: option instance) : syncEff :=
+match cur with
+| None => emp
+| Some ins => singleton ins
+end.
+
+Definition state_to_eff (s:state) : syncEff :=
+let '(his, cur, k) := s in
+if greaterThan k 0 then normal (cons his (instanceToEff cur))
+else normal (cons his (instanceToEff cur)).
+
+
+
+
+Definition states_to_eff (states:states) : syncEff :=
+normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
+
 
 Definition string_of_state (state: state) : string:=
-let '(his, cur, k) := state in 
-"(" ++ string_of_effects (normal his) ++ ", " ++ string_of_instance1 cur ++ ","++ string_of_nat k ++")".
+let '(his, cur, k) := state in
+string_of_effects (state_to_eff state) ++ " with exit code ("++ string_of_nat k ++")   ".
 
 
 Definition string_of_states (states: states) : string:=
-List.fold_left (fun acc a => acc ++ "    " ++ string_of_state a) states "".
+List.fold_left (fun acc a => acc ++ "" ++ string_of_state a) states "".
 
 
 
@@ -539,6 +566,7 @@ in aux records.
 Definition leftHy  (records :list instance) : nat :=
 numEvent * numEvent - (List.length records).
 
+(*
 Definition conflitStatus (s1 s2: signalState): bool :=
 match (s1, s2) with
 | (zero, zero)   => false
@@ -565,7 +593,7 @@ Definition tryToMerge (i1 i2: instance) : option instance :=
   if hasConflits merge then None else Some merge.
 
 Compute (tryToMerge [("A", one)] [("B", zero)] ).
-    
+*)
 
 Program Fixpoint fixpoint (records :list instance) (eff1 eff2: syncEff) {measure (leftHy records)} : syncEff :=
 match eff1 with
@@ -670,12 +698,20 @@ end.
 Program Fixpoint fixpointState (records :list instance) (s1 s2:state) {measure (leftHy records)} : states :=
 let '(eff1, cur1, k1) := s1 in
 let '(eff2, cur2, k2) := s2 in
-let f1s := fst eff1 in
-let f2s := fst eff2 in
+let f1s:  list instance := fst eff1 in
+let f2s: list instance := fst eff2 in
 match normal eff1, normal eff2 with
 | emp, emp => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
-| emp, _   => [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
-| _, emp   => [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
+| emp, _   =>
+  if geb k1 0 || geb k1 k2 
+  then List.map (fun (f:instance) =>
+                   (recordsToEff records, mergeCurrent cur1 (Some f), k1)) f2s
+  else [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
+| _, emp   =>
+  if geb k2 0|| geb k2 k1 
+  then List.map (fun (f:instance) =>
+                   (recordsToEff records, mergeCurrent cur2 (Some f), k2)) f1s
+  else [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
 | _,_      =>
      let zipFst := zip_list f1s f2s in
      (*if (natEq (List.length zipFst)  0) then [(singleton [(string_of_effects eff1 ++ ", " ++ string_of_effects eff2, one)], None, 0)] else*)
@@ -761,22 +797,21 @@ Compute (fixpointState [] (cons (singleton [("C", one);("E", undef)]) (singleton
 
 
 
-
+Definition normalCurrent (c: option instance) : option instance :=
+match c with
+| None => None
+| Some ins => Some (remove_dup ins)
+end.
 
 
 Definition parallelMergeState (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
-List.flat_map (fun (pair:(state * state)) =>
-  let (s1, s2)     := pair in
-  fixpointState [] s1 s2
-) mix_states.
+let temp := List.flat_map (fun (pair:(state * state)) =>
+                             let (s1, s2) := pair in fixpointState [] s1 s2) mix_states in
+List.map (fun (tuple:state) =>
+            let '(his, cur, k):= tuple in
+            (normal his, normalCurrent cur, k)) temp.
 
-
-Definition instanceToEff (cur: option instance) : syncEff :=
-match cur with
-| None => emp
-| Some ins => singleton ins
-end.
 
 
 
@@ -832,6 +867,11 @@ match cur with
 end.
 *)
 
+Require Import PeanoNat.
+
+Local Open Scope nat_scope.
+
+
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
 List.flat_map (fun (pair:state) =>
@@ -843,7 +883,7 @@ List.flat_map (fun (pair:state) =>
   match expr with
   | nothingE        => [pair]
   | pauseE          => [(cons his (instanceToEff cur), Some (initalCur env), k)]
-  | raiseE n        => [(his, cur, S k)]
+  | raiseE n        => [(his, cur, Nat.add k n)]
   | emitE str       => [(his, setSigInCur env cur (str, one), k)]
   | localDelE str e => let newEnv   := (str)::env in
                        forward newEnv [pair] e
@@ -906,16 +946,6 @@ List.flat_map (fun (pair:state) =>
 
 
 
-Definition state_to_eff (s:state) : syncEff :=
-let '(his, cur, k) := s in
-if greaterThan k 0 then bot
-else normal (cons his (instanceToEff cur)).
-
-
-
-
-Definition states_to_eff (states:states) : syncEff :=
-normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
 
 Definition env := ["A"; "B"; "C"; "D"; "E"; "F" ].
 
@@ -923,10 +953,10 @@ Definition env1 := ["C"].
 
 
 Definition forward_Shell (expr:expression) : string :=
-  string_of_effects(
-      states_to_eff
- (forward env [(emp, None, 0)] expr)
-).
+ (* string_of_effects(
+      states_to_eff*)
+ string_of_states (forward env [(emp, None, 0)] expr)
+(*)*).
 
 
 Definition testSeq : expression :=
@@ -1022,7 +1052,11 @@ Definition testAsyncSeq1 : expression :=
 Definition testPal0 : expression :=
   fork testSeq  par (await "C").
 
-Compute (forward_Shell testPal3).
+
+Definition testPal4 : expression :=
+   fork (emit "C";pause;emit"D"; raise 3) par (emit "A"; raise 2).
+
+Compute (forward_Shell testPal4).
 
 
 
