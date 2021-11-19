@@ -67,7 +67,7 @@ Inductive expression : Type :=
 | parE      (e1:expression) (e2:expression)
 | ifElseE   (s:string) (e1:expression) (e2:expression)
 | loopE     (e:expression)
-| suspendE  (e:expression) (s:string)
+(*| suspendE  (e:expression) (s:string)*)
 | asyncE    (e:expression) (s:string)
 | awaitE    (s:string)
 | raiseE    (n:nat)
@@ -121,7 +121,9 @@ Notation "'fork' E1 'par' E2" := (parE E1 E2)  (at level 80, right associativity
 Notation "'present' A 'then' E1 'else' E2" := (ifElseE A E1 E2)  (at level 200, right associativity).
 Notation "'loop' E" := (loopE E) (at level 200, right associativity).
 
+(*
 Notation "'suspend' E 'when' S" := (suspendE E S) (at level 200, right associativity).
+*)
 
 Notation "'async' E 'with' S" := (asyncE E S) (at level 200, right associativity).
 
@@ -149,7 +151,11 @@ Fixpoint instanceEntail (ins1 ins2 : instance): bool :=
 
 Definition instanceEntailShell (ins1 ins2 : option instance) : bool :=
 match ins1 with
-| None => true
+| None =>
+  match ins2 with
+  | None => true
+  | Some ins2In => false
+  end
 | Some ins1In =>
   (match ins2 with
    | None => false
@@ -449,8 +455,8 @@ end.
 
 Definition state_to_eff (s:state) : syncEff :=
 let '(his, cur, k) := s in
-if greaterThan k 0 then normal (cons his (instanceToEff cur))
-else normal (cons his (instanceToEff cur)).
+if greaterThan k 0 then normal (cons (normal his) (instanceToEff cur))
+else normal (cons (normal his) (instanceToEff cur)).
 
 
 
@@ -871,6 +877,19 @@ Require Import PeanoNat.
 
 Local Open Scope nat_scope.
 
+Fixpoint approxSuspension (env:envenvironment) (eff: syncEff) (s:string):  syncEff :=
+let additon :=  disj emp (cons (waiting s) (singleton (initalCur env))) in
+cons (match eff with
+| bot          => bot
+| emp          => emp
+| singleton ins=> eff
+| waiting   s  => eff
+| cons e1 e2   => cons (approxSuspension env e1 s) (cons additon (approxSuspension env e2 s))
+| disj e1 e2   => disj (approxSuspension env e1 s) (approxSuspension env e2 s)
+| parEff e1 e2 => parEff (approxSuspension env e1 s) (approxSuspension env e2 s)
+| kleene e     => kleene (approxSuspension env e s)
+end) additon.
+
 
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
@@ -911,12 +930,13 @@ List.flat_map (fun (pair:state) =>
                                    let '(hisE, curE, kE) := pairE in
                                    (hisE, setSigInCur env curE (str, one), kE)) s1
   | awaitE s        => [(cons his (cons (instanceToEff cur) (waiting s)), None, k)]
-  | suspendE e str  => let s1 := (forward env [(emp, cur, k)] e) in
+(*  | suspendE e str  => let s1 := (forward env [(emp, cur, k)] e) in
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
-                                   let newhis := cons his (extendEff hisE (str, zero)) in
-                                   let newCur := setSigInCur env curE (str, zero) in
+                                   let newhis := cons his (approxSuspension env hisE str) in
+                                   let newCur := curE(*setSigInCur env curE (str, zero)*) in
                                    (newhis, newCur, kE)) s1
+*)
   | trycatchE e h => let s1 := (forward env [pair] e) in
                        List.flat_map
                          (fun (pairE:state) =>
@@ -1014,13 +1034,12 @@ Definition testLoop : expression :=
   loop testSeq.
 
 
-Definition testSuspend : expression :=
-  suspend testSeq when "S".
-
-
-
 Definition testLoop1 : expression :=
   (loop testSeq).
+
+Definition testLoop2 : expression :=
+  (loop (emit "A"; pause; pause)).
+
 
 
 Definition testPause : expression :=
@@ -1060,7 +1079,25 @@ Definition testPal4 : expression :=
 Definition testPal5 : expression :=
    async testSeq with "E"; await "C";await "E";await "D".
 
-Compute (forward_Shell testPal5).
+Definition testPresent1 : expression :=
+  present "A" then emit "B" else emit "C".
+
+
+(*
+Definition testSuspend : expression :=
+  suspend testSeq when "S".
+
+
+
+Definition testSuspend1 : expression :=
+  suspend (emit "A";pause) when "B".
+
+Definition testPal6 : expression :=
+  fork testSuspend1  par (emit "B").
+*)
+
+
+Compute (forward_Shell testPresent1).
 
 
 
