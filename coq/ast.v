@@ -1,5 +1,6 @@
 Module AST.
 
+Require Import FunInd.
 From Coq Require Import Arith Bool Ascii String.
 Require Import Coq.Lists.List.
 Import ListNotations.
