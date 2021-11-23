@@ -89,91 +89,33 @@ Definition max_k (k1 k2: nat) : nat :=
 if greaterThan k1 k2 then k1 else k2.
 
 
-Program Fixpoint  normalIn (eff:syncEff) (n:nat) {measure n} :syncEff := 
-if greaterThan n 0 then
+
+Program Fixpoint normalIn (eff:syncEff) (n:nat) {measure n} :syncEff :=
+match n with
+| O => eff
+| S n' =>
   (match eff with
    | bot          => eff
    | emp          => eff
    | singleton ins=> if controdict ins then bot else singleton (remove_dup ins)
    | waiting   _  => eff
    | cons bot  _  => bot
-   | cons emp e   => normalIn e (n-1)
-   | cons e emp   => normalIn e (n-1)
-   | cons (kleene e) _ =>  kleene e
-   | cons e1 e2   => cons (normalIn e1 (n-1)) (normalIn e2 (n-1))
-   | disj bot e   => normalIn e (n-1)
-   | disj e bot   => normalIn e (n-1)
-   | disj e1 e2   => normalIn (disj (normalIn e1 (n-1)) (normalIn e2 (n-1))) (n-1)
+   | cons emp e   => normalIn e n'
+   | cons e emp   => normalIn e n'
+   | cons e1 e2   => normalIn (cons (normalIn e1 n') (normalIn e2 n')) n'
+   | disj bot e   => normalIn e n'
+   | disj e bot   => normalIn e n'
+   | disj e1 e2   => normalIn (disj (normalIn e1 n') (normalIn e2 n')) n'
    | parEff bot _ => bot
    | parEff _ bot => bot
-   | parEff e1 e2 => normalIn (parEff (normalIn e1 (n-1)) (normalIn e2 (n-1))) (n-1)
+   | parEff e1 e2 => normalIn (parEff (normalIn e1 n') (normalIn e2 n')) n'
    | kleene emp   => emp
-   | kleene e     => kleene (normalIn e (n-1))
-end)
-else eff.
+   | kleene e     => normalIn (kleene (normalIn e n')) n'
+   end)
+end.
 
 
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
 
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
-Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
@@ -271,6 +213,61 @@ Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+Next Obligation. Proof. Admitted.
+
 Next Obligation. Proof. Admitted.
 Next Obligation. Proof. Admitted.
 
@@ -437,34 +434,6 @@ in aux records.
 Definition leftHy  (records :list instance) : nat :=
 numEvent * numEvent - (List.length records).
 
-(*
-Definition conflitStatus (s1 s2: signalState): bool :=
-match (s1, s2) with
-| (zero, zero)   => false
-| (one, one)     => false
-| (undef, undef) => false
-| _              => true
-end.
-
-Definition tryToMerge (i1 i2: instance) : option instance :=
-  let merge := List.app i1 i2 in 
-  let fix helper (li:instance) (name:string) (status:signalState) : bool :=
-    match li with 
-    | [] => false 
-    | (name', status'):: xs => if eqb name name' && (conflitStatus status status')
-                         then true else helper xs name status
-    end in
-  let fix hasConflits (li:instance): bool :=
-    match li with 
-    | [] => false 
-    | (name, status):: xs => if helper xs name status
-                         then true else hasConflits xs
-    end
-  in 
-  if hasConflits merge then None else Some merge.
-
-Compute (tryToMerge [("A", one)] [("B", zero)] ).
-*)
 
 Program Fixpoint fixpoint (records :list instance) (eff1 eff2: syncEff) {measure (leftHy records)} : syncEff :=
 match eff1 with
@@ -476,7 +445,7 @@ match eff1 with
      let f1s := fst eff1 in
      let f2s := fst eff2 in
      let zipFst := zip_list f1s f2s in
-     let effList : list (syncEff):= 
+     let effList : list (syncEff):=
          List.map (fun (pair: (instance * instance )) =>
             let (f1, f2):=pair in
             let merge := (List.app f1 f2) in
@@ -486,29 +455,12 @@ match eff1 with
             else (fixpoint (List.app (records) [merge]) der1 der2)
          ) zipFst in
      normal (List.fold_left (fun acc a => disj acc a) effList bot)
-     (*let effList : list (option syncEff):= 
-         List.map (fun (pair: (instance * instance )) =>
-            let (f1, f2):=pair in
-            let merge := (tryToMerge f1 f2) in
-            match merge with 
-            | None => None
-            | Some merge =>
-                let der1 := (normal (derivitive eff1 merge)) in
-                let der2 := (normal (derivitive eff2 merge)) in
-                if (reoccur records merge) then Some (formloop records merge)
-                else Some (fixpoint (merge :: records) der1 der2)
-            end
-         ) zipFst in
-     normal (List.fold_left (fun acc a => 
-          match a with 
-          | None => acc 
-          | Some a => disj acc a
-          end ) effList bot)
-*)
   end)
 end.
 
-Next Obligation. Proof. Admitted.
+Next Obligation.
+Proof.
+Admitted.
 
 
 Compute (max_k 1 2).
@@ -585,7 +537,6 @@ match normal eff1, normal eff2 with
   else [(cons (recordsToEff records) (mergeCurrentToEff cur2 eff1), cur1, k1)]
 | _,_      =>
      let zipFst := zip_list f1s f2s in
-     (*if (natEq (List.length zipFst)  0) then [(singleton [(string_of_effects eff1 ++ ", " ++ string_of_effects eff2, one)], None, 0)] else*)
      List.flat_map (fun (pair: (instance * instance )) =>
           let (f1, f2):=pair in
           let merge := (List.app f1 f2) in
@@ -686,6 +637,22 @@ List.map (fun (tuple:state) =>
 
 
 
+Definition parallelMergeState' (states1 states2: states) : states :=
+let mix_states   := zip_list states1 states2 in
+let temp := List.flat_map 
+   (fun (pair:(state * state)) =>
+      let (s1, s2) := pair in
+      let eff1 := stateToEffect s1 in
+      let eff2 := stateToEffect s2 in 
+      let merged := fixpoint [] eff1 eff2) mix_states in
+      effectsToState merged) 
+List.map (fun (tuple:state) =>
+            let '(his, cur, k):= tuple in
+            (normal his, normalCurrent cur, k)) temp.
+
+
+
+
 Fixpoint extendEff (eff:syncEff) (i:signal_status): syncEff :=
 match eff with
 | singleton ins=> singleton (List.app ins [i])
@@ -768,103 +735,3 @@ cons (helper eff) tail.
 
 
 
-
-(*
-
-cav14 https://www.comp.nus.edu.sg/~chinwn/papers/TRs2.pdf
-aplas13 https://trinhmt.github.io/home/SpecInfer/technical_report.pdf
-
-
-
-
- append :: xs::LL<n> -> ys::LL<m> --> res::LL<r> & R(n,m,r)
- 
- // verification
-  n=0 /\ r=m -> R(n,m,r)
-  /\ n>0 /\ R(n-1,m,r1) /\ r=1+r1 -> R(n,m,r)
-  
-  R(n,m,r) -> r=n+m
- 
- 
- infer[R,n,m] ..... |- ....
-
-Ind inv stp = 
-  \x xs b b' -> 
-      inv xs b => (stp x b b'  => inv (x:xs) b')
-      inv xs b /\ stp x b b'  => inv (x:xs) b'
-              
-  (inv xs b => stp x b b') /\ (inv xs b => inv (x:xs) b')
-			   
-foldr :: (Ind inv stp) =>
-  (x:a -> b:b -> {b':b:stp x b b'})
-  -> {b:b|inv [] b} -> xs:[a] -> {v:b|inv xs v}
-foldr f z xs = case
-  xs of [] -> z
-       x:xs -> f x (foldr f z xs)
-
-(i) write pre/post withn 2nd-order unknown
-(ii) verifier collects relational assumption
-(iii) normalization + simplification
-(iv) fixpoint 	   
-CAV2014 - shape analysis
-	Quang Loc Le, Cristian Gherghina, Shengchao Qin, Wei-Ngan Chin:
-Shape Analysis via Second-Order Bi-Abduction. CAV 2014: 52-68
-
-
-APLAS2013 
-Minh-Thai Trinh, Quang Loc Le, Cristina David, Wei-Ngan Chin:
-Bi-Abduction with Pure Properties for Specification Inference. APLAS 2013: 107-123
-
-
-======================================
-let rec foldr op b ys = 
-(*@
-given (inv: list->int->bool)
-requires
-  inv([],b) &
-  op(arg1:int,arg2:int) |= 
-    Given (xs:list) (xs':list), 
-      { xs::Cons(arg1,xs') & inv(xs',arg2) } *->:r 
-      { inv(xs,r) }
-ensures[res] inv(ys,res)
-@*)
-match ys with
-| [] -> b
-| y::ys -> op y (foldr op b ys)
-
-	   
-	   D1 x xs
-	   D2 y
-	   
-	   CAV2014,APLAS13 shape analysis (relational assumptuon)
-	   
-	   length xs = case xs of 
-	      [] ->  0
-		  x:xs -> 1+ length xs
-		  
-		xs::LL<>
-		
-	   
-- can this spec be automatically verified?
-- can this spec be automatically inferred?
-- can be spec be improved by pre-condition?
-
-  q x y => p y z => r x z
-  
-  q x y /\ p y z => r x z
-  
-  (a => b) => c
-  a => (b => c)
-
-  a /\ b => c
-  
-
-  
-Chain p q r = \x y z -> 
-    /\ q x y /\ p y z => r x z
-compose::(Chain p q r) =>
-  (y:b -> {z:c|p y z})
-  -> (x:b -> {z:c|q x z})
-  -> (x:b -> {z:c|r x z})
-		   
-*)

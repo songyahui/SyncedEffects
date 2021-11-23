@@ -3,7 +3,7 @@
 3. finish the aximatic rule first. 
 4. small step semantics. 
 
-====possible a bug
+==========
 
 module Blank where
 
@@ -15,7 +15,7 @@ twice :: forall < gpost :: a -> a -> Bool
               , twicepost :: a -> a -> Bool
               >.
        {x::a<gpre>, w::a<gpost x> |- a<gpost w> <: a<twicepost x>}
-       {x::a<gpre> |- a<gpost x> <: a<gpre>}
+       {x::a<twicepre> |- a<gpost x> <: a<gpre>}
        {x::a<twicepre> |- a<twicepre> <: a<gpre>}
        g:(z:a<gpre> -> a<gpost z>)
     -> x:a<twicepre> -> a<twicepost x>
@@ -34,7 +34,81 @@ incr2 x = twice incr x
 incrrr :: Int -> Int
 incrrr x = x + 1
 
-{-@ test4 :: x:{v:Nat| v < 99 } -> {v:Nat | v == x + 2 } @-}
-test4 x = twice incrrr x 
+{-@ incrrr2 :: x:{v:Nat| v < 99 } -> {v:Nat | v == x + 2 } @-}
+incrrr2 x = twice incrrr x
+
+{-@
+quad :: forall < gpost :: a -> a -> Bool
+              , gpre :: a -> Bool
+              , quadpre :: a -> Bool
+              , quadpost :: a -> a -> Bool
+              >.
+        {x::a<quadpre> |- a<quadpre> <: a<gpre>}
+        {x::a<quadpre>, y::a<gpost x> |- a<gpost x> <: a<gpre>}
+        {x::a<quadpre>, y::a<gpost x>, y2::a<gpost y> |- a<gpost y> <: a<gpre>}
+        {x::a<quadpre>, y::a<gpost x>, y2::a<gpost y>, y3::a<gpost y2> |- a<gpost y2> <: a<gpre>}
+        {x::a<gpre>, y::a<gpost x>, y2::a<gpost y>, y3::a<gpost y2> |- a<gpost y3> <: a<quadpost x>}
+       g:(z:a<gpre> -> a<gpost z>)
+    -> x:a<quadpre> -> a<quadpost x>
+@-}
+quad = twice twice 
+
+{-@ test3 :: x:{v:Nat| v < 97 } -> {v:Nat | v == x + 4 } @-}
+test3 x = quad incrrr x
+
+{-@ test4 :: x:{v:Nat| v < 93 } -> {v:Nat | v == x + 8 } @-}
+test4 x = quad incrrr2 x
 
 
+ ====================================
+  
+ quad = twice twice
+ foo1 = twice quad  //2^4  (16)
+ foo2 = quad twice  //+16  (4^2)
+ foo3 = quad quad   //+256  (4^4)
+  
+==================================================
+ twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+
+
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// execution
+{ 
+  twice (twice) f x
+  = (twice) (twice f) x
+  = (twice f) (twice f x)
+  = f (f (twice f x))
+  = f (f (f (f x)))
+}
+
+{ 
+  // quad.pre(f,x)
+  // quad.pre(f,x) --> twice.pre(twice,f)
+  // twice twice f
+  g = foo f;
+  // quad.pref(f,x) /\ twice.post(twice,f,foo)
+  // quad.pref(f,x) /\ twice.post(twice,f,foo) -> foo.pre(f)
+  g x
+  // quad.pref(f,x) /\ twice.post(twice,f,foo) /\ foo.post(x)
+}
+  
+foo f = 
+ 	 req foo.pre(f)
+	 ens foo.post(f,res)	
+// execution
+{ 
+    // foo.pre(f)
+	// foo.pre(f) -> twice.pre(twice,f)
+    r = twice twice f
+	// foo.pre(f) /\ twice.post(twice,f,r)
+	return r
+    // foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+}
