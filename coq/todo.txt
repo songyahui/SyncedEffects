@@ -2,5 +2,39 @@
 2. rewrite the code with a stateToEff function and a cut function. 
 3. finish the aximatic rule first. 
 4. small step semantics. 
-5. twice quad examples. 
+
+====possible a bug
+
+module Blank where
+
+-- this is simply, a blank file.
+{-@
+twice :: forall < gpost :: a -> a -> Bool
+              , gpre :: a -> Bool
+              , twicepre :: a -> Bool
+              , twicepost :: a -> a -> Bool
+              >.
+       {x::a<gpre>, w::a<gpost x> |- a<gpost w> <: a<twicepost x>}
+       {x::a<gpre> |- a<gpost x> <: a<gpre>}
+       {x::a<twicepre> |- a<twicepre> <: a<gpre>}
+       g:(z:a<gpre> -> a<gpost z>)
+    -> x:a<twicepre> -> a<twicepost x>
+@-}
+twice g x = g (g x)
+
+{-@ incr :: x:Nat -> {v:Nat | v == x + 1} @-}
+incr :: Int -> Int
+incr x = x + 1
+
+{-@ incr2 :: x:Nat -> {v:Nat | v == x + 2} @-}
+incr2 x = twice incr x
+
+
+{-@ incrrr :: x:{v:Nat| v < 100 } -> {v:Nat | v == x + 1 } @-}
+incrrr :: Int -> Int
+incrrr x = x + 1
+
+{-@ test4 :: x:{v:Nat| v < 99 } -> {v:Nat | v == x + 2 } @-}
+test4 x = twice incrrr x 
+
 
