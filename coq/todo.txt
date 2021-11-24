@@ -1,5 +1,4 @@
 1. the capability of sync and async, and the mixture. 
-2. rewrite the code with a stateToEff function and a cut function. 
 3. finish the aximatic rule first. 
 4. small step semantics. 
 5. quad big step spec. 

@@ -275,7 +275,7 @@ Next Obligation. Proof. Admitted.
 
 
 Definition normal (effIn:syncEff) : syncEff :=
-  normalIn effIn 4
+  normalIn effIn 6
 .
 
 
@@ -315,25 +315,8 @@ match cur with
 | Some ins => singleton ins
 end.
 
-Definition state_to_eff (s:state) : syncEff :=
-let '(his, cur, k) := s in
-if greaterThan k 0 then normal (cons (normal his) (instanceToEff cur))
-else normal (cons (normal his) (instanceToEff cur)).
 
 
-
-
-Definition states_to_eff (states:states) : syncEff :=
-normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
-
-
-Definition string_of_state (state: state) : string:=
-let '(his, cur, k) := state in
-string_of_effects (state_to_eff state) ++ " with exit code ("++ string_of_nat k ++")   ".
-
-
-Definition string_of_states (states: states) : string:=
-List.fold_left (fun acc a => acc ++ "" ++ string_of_state a) states "".
 
 
 
@@ -357,7 +340,7 @@ match eff with
 | bot          => []
 | emp          => []
 | singleton i  => [i]
-| waiting   s  => [([])] (*[[(s, one)]] ++ [[(s, zero)]]*)
+| waiting   s  => [[]] (*[[(s, one)]] ++ [[(s, zero)]]*)
 | disj e1 e2   => fst e1 ++ fst e2
 | cons e1 e2   => if nullable e1 then fst e1 ++ fst e2
                   else fst e1
@@ -526,7 +509,7 @@ let f2s: list instance := fst eff2 in
 match normal eff1, normal eff2 with
 | emp, emp => [(recordsToEff records, mergeCurrent cur1 cur2, max_k k1 k2)]
 | emp, _   =>
-  if greaterThan k1 0 
+  if greaterThan k1 0
   then List.map (fun (f:instance) =>
                    (recordsToEff records, mergeCurrent cur1 (Some f), k1)) f2s
   else [(cons (recordsToEff records) (mergeCurrentToEff cur1 eff2), cur2, k2)]
@@ -540,10 +523,12 @@ match normal eff1, normal eff2 with
      List.flat_map (fun (pair: (instance * instance )) =>
           let (f1, f2):=pair in
           let merge := (List.app f1 f2) in
-          let der1 := if Nat.eqb (List.length f1) 0 then (normal (derivitive eff1 merge)) else  (normal (derivitive eff1 f1)) in 
-          let der2 := if Nat.eqb (List.length f2) 0 then (normal (derivitive eff2 merge))  else (normal (derivitive eff2 f2)) in
-          if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
-          else (fixpointState (List.app records [merge]) (der1, cur1, k1) (der2, cur2, k2))
+          if controdict merge then []
+          else
+            let der1 := if Nat.eqb (List.length f1) 0 then (normal (derivitive eff1 merge)) else  (normal (derivitive eff1 f1)) in 
+            let der2 := if Nat.eqb (List.length f2) 0 then (normal (derivitive eff2 merge))  else (normal (derivitive eff2 f2)) in
+            if (reoccur records merge) then [(formloop records merge, None, max_k k1 k2)]
+            else (fixpointState (List.app records [merge]) (der1, cur1, k1) (der2, cur2, k2))
      ) zipFst
 end.
 
@@ -636,22 +621,39 @@ List.map (fun (tuple:state) =>
 
 
 
+Definition state_to_eff (s:state) : syncEff :=
+let '(his, cur, k) := s in
+if greaterThan k 0 then normal (cons (normal his) (instanceToEff cur))
+else normal (cons (normal his) (instanceToEff cur)).
 
+
+Definition states_to_eff (states:states) : syncEff :=
+normal (List.fold_left (fun acc a => disj acc (state_to_eff a)) states bot).
+
+
+
+Definition string_of_state (state: state) : string:=
+let '(his, cur, k) := state in
+string_of_effects (state_to_eff state) ++ " with exit code ("++ string_of_nat k ++")   ".
+
+
+
+Definition string_of_states (states: states) : string:=
+List.fold_left (fun acc a => acc ++ "" ++ string_of_state a) states "".
+
+
+
+(*
 Definition parallelMergeState' (states1 states2: states) : states :=
 let mix_states   := zip_list states1 states2 in
-let temp := List.flat_map 
+List.flat_map
    (fun (pair:(state * state)) =>
       let (s1, s2) := pair in
-      let eff1 := stateToEffect s1 in
-      let eff2 := stateToEffect s2 in 
-      let merged := fixpoint [] eff1 eff2) mix_states in
-      effectsToState merged) 
-List.map (fun (tuple:state) =>
-            let '(his, cur, k):= tuple in
-            (normal his, normalCurrent cur, k)) temp.
-
-
-
+      let eff1 := states_to_eff s1 in
+      let eff2 := states_to_eff s2 in
+      let merged := fixpoint [] eff1 eff2 in
+      effectsToState merged) mix_states.
+*)
 
 Fixpoint extendEff (eff:syncEff) (i:signal_status): syncEff :=
 match eff with

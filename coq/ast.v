@@ -47,7 +47,7 @@ match li with
 end in
 helper (List.filter (fun (pair:signal_status) =>
   let (name, status) := pair in
-    Bool.eqb (compareStatus undef status) false ) ins)
+    Bool.eqb (compareStatus one status) true ) ins)
 )
 ++ "}".
 
