@@ -60,6 +60,13 @@ test3 x = quad incrrr x
 {-@ test4 :: x:{v:Nat| v < 93 } -> {v:Nat | v == x + 8 } @-}
 test4 x = quad incrrr2 x
 
+{-@ test5 :: x:{v:Nat| v < 94 } -> {v:Nat | v == x + 8 } @-}
+test5 x = quad incrrr2 x
+
+{-@ test6:: x:{v:Nat| v < 93 } -> {v:Nat | v == x + 7 } @-}
+test6 x = quad incrrr2 x
+
+
  ====================================
   
  quad = twice twice
