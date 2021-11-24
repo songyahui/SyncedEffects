@@ -2,6 +2,7 @@
 2. rewrite the code with a stateToEff function and a cut function. 
 3. finish the aximatic rule first. 
 4. small step semantics. 
+5. quad big step spec. 
 
 ==========
 
@@ -119,3 +120,37 @@ foo f =
 	return r
     // foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
 }
+
+
+==============
+Possible a bug:
+
+{-@
+foo :: forall < fpost :: a -> a -> Bool
+              , fpre :: a -> Bool
+              , foopre :: a -> Bool
+              , foopost :: a -> a -> Bool
+              >.
+       {x::a<foopre> |- a<foopre> <: a<fpre>}
+       f:(z:a<fpre> -> a<fpost z>)
+    -> x:a<foopre> -> {v:a<foopost x> |  v = x }
+@-}
+foo f = twice twice f
+
+
+{-@quad :: forall < fpost :: a -> a -> Bool
+              , fpre :: a -> Bool
+              , quadpre :: a -> Bool
+              , quadpost :: a -> a -> Bool
+              >.
+
+       {x::a<quadpre> |- a<quadpre> <: a<fpre>}
+       
+       f:(z:a<fpre> -> a<fpost z>)
+    -> x:a<quadpre> -> {v:a<quadpost x> |  v /= x }
+@-}
+quad f x = foo f x
+   
+
+{-@ test3 :: x:{v:Nat| v = 97 } -> {v:Nat | v == 0 - 400 } @-}
+test3 x = quad incrrr x

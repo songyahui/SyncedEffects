@@ -28,6 +28,7 @@ twice g x = g (g x)
 @-}
 quad f x = let g = twice twice f in g x
 -- twice <: twice.g.pre -> twice.g.post
+-- f <: twice.x.pre -> twice.x.post
 
 
 {-@ goo :: x:{v:Nat | v < 101} -> {v:Nat | v < 99} @-}
@@ -40,5 +41,5 @@ koo g x = g x
 
 test = koo goo 0
 
--- goo real <: goo formal
+-- goo real <: koo.g formal
 -- (x:{v:Nat | v < 101} -> {v:Nat | v < 99}) <: (x:{v:Nat | v < 100} -> {v:Nat | v < 100})
