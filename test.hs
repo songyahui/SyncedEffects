@@ -20,7 +20,9 @@ twice g x = g (g x)
               , quadpre :: a -> Bool
               , quadpost :: a -> a -> Bool
               >.
-        {f::a<fpre> |- a<fpre> <: a<twicepre>}
+              
+        {|- }
+        {f::(z:a<fpre> -> a<fpost z>) |- (z:a<fpre> -> a<fpost z>) <: (z:a<twicepre> -> a<twicepre z>)}
        f:(z:a<fpre> -> a<fpost z>)
     -> x:a<quadpre> -> a<quadpost x>
 @-}
