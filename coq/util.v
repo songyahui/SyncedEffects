@@ -31,6 +31,7 @@ end.
 Definition controdictStatus (s1 s2: signalState): bool :=
 match (s1, s2) with
 | (zero, one)   => true
+| (undef, one)  => true
 | _                  => false
 end.
 
@@ -687,7 +688,7 @@ let (name', status') := ss in
 let fix aux (li:instance) : instance :=
     match li with
     | [] => [(ss)]
-    | (name, status) :: xs => if eqb name name' && (compareStatus status status' || compareStatus status undef)
+    | (name, status) :: xs => if eqb name name' && ((*compareStatus status status' ||*) compareStatus status undef)
                               then ss :: xs
                               else (name, status) :: (aux xs)
     end
@@ -696,6 +697,13 @@ match cur with
 | None => Some (aux (initalCur env))
 | Some insIn => Some (aux insIn)
 end.
+
+
+Definition extendCur (env:envenvironment) (cur: option instance) (ss:signal_status): option instance :=
+  match cur with
+  | None => Some (ss:: initalCur env)
+  | Some insIn => Some (ss:: insIn)
+  end.
 
 Compute (setSigInCur ["A";"B";"C"] (setSigInCur ["A";"B";"C"] None ("A", one)) ("A", one)).
 

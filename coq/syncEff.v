@@ -31,14 +31,13 @@ List.flat_map (fun (pair:state) =>
   | parE e1 e2      => let s1 := (forward env [pair] e1) in
                        let s2 := (forward env [pair] e2) in
                        parallelMergeState s1 s2
-  | ifElseE s e1 e2 => if instanceEntailShell cur (Some [(s, one)])
+  | ifElseE s e1 e2 => (*if instanceEntailShell cur (Some [(s, one)])
                        then forward env [pair] e1
                        else forward env [pair] e2
-                       (*let s1 := (forward env [(his, setSigInCur env cur (s, one), k)] e1) in
-                       let s2 := (forward env [(his, setSigInCur env cur (s,zero), k)] e2) in
-                       let zipStates := zip_list s1 s2 in
-                       List.map (fun (pair: (state * state)) => let (a, b) := pair in normal (disj a b)) zipStates
                        *)
+                       let s1 := (forward env [(his, extendCur env cur (s, one), k)] e1) in
+                       let s2 := (forward env [(his, extendCur env cur (s,zero), k)] e2) in
+                       List.app s1 s2
   | asyncE e str    => let s1 := (forward env [pair] e) in
                        List.map (fun (pairE:state) =>
                                    let '(hisE, curE, kE) := pairE in
@@ -163,9 +162,21 @@ Compute (forward_Shell testTry1). (* "{A,B}.{C}.{D} with exit code (0)   " *)
 
 
 Definition testPresent : expression :=
+  present "A" then testSeq else (emit "A").
+
+Compute (forward_Shell testPresent). (* "{A,B}.{C}.{D} with exit code (0)   _|_ with exit code (0)    " *)
+
+
+Definition testPresent4 : expression :=
   present "A" then testSeq else (emit "B").
 
-Compute (forward_Shell testPresent). (* "{B} with exit code (0)   " *)
+Compute (forward_Shell testPresent4). (* "{A,B}.{C}.{D} with exit code (0)   {B} with exit code (0)   " *)
+
+
+Definition testPresent3 : expression :=
+  emit "A" ; present "A" then testSeq else (emit "B").
+
+Compute (forward_Shell testPresent3). (* "{A,B}.{C}.{D} with exit code (0)   _|_ with exit code (0)    " *)
 
 
 Definition testPresent1 : expression :=
