@@ -1,5 +1,5 @@
 1. the capability of sync and async, and the mixture. 
-3. finish the aximatic rule first. 
+2. the algorithem of parallelMerge and cut
 4. small step semantics. 
 5. quad big step spec. 
 
