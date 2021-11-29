@@ -1,0 +1,757 @@
+compose f g x = f (g x)
+compose :: \ f g x -> r
+    req true
+	ensure compose.post(f,g,x,r)
+f:: \ y -> r: 
+     req true
+     ens f.post(y,r);
+g:: \ x -> r: 
+     req true
+     ens g.post(x,r);
+{ // true
+  y = g x;
+  // g.post(x,y)
+  z = f y;
+  // g.post(x,y) /\ f.post(y,z)
+  return z
+  // rel assumption = g.post(x,y) /\ f.post(y,z) -> compose.post(f,g,x,r)
+}
+  
+=========================================
+foo(ref x)
+  pre: x>0
+  post: x'=x+1 
+{ 
+  x = x+1
+}
+
+  
+// adding pre-condition #.pre  to our reasoning gives.
+bounded constraint :
+   compose.pre(x) /\ g.post(x,y) /\ f.post(y,z)) -> compose.post(x,r)
+/\ compose.pre(x) /\ g.post(x,y) -> f.pre(y)
+/\ compose.pre(x) -> g.pre(x)
+compose f g x = f (g x)
+compose :: \ f g x -> r
+    req compose.pre(x)
+	ens compose.post(x,r) // assume compose.post(x,r) -> compose.pre(x)
+f:: \ y -> r: 
+     req f.pre(y)
+     ens f.post(y,r); // assume f.post(y,r) -> f.pre(y)
+g:: \ x -> r: 
+     req g.pre(x)
+     ens g.post(x,r); // assume g.post(x,r) -> g.pre(x)
+{ // compose.pre(x)
+  y = g x; 
+  // rel ass : compose.pre(x) -> g.pre(x)
+  // compose.pre(x) /\ g.post(x,y)
+  z = f y;
+  // rel ass : compose.pre(x) /\ g.post(x,y) -> f.pre(y)
+  // compose.pre(x) /\ g.post(x,y) /\ f.post(y,z)
+  return z
+  // rel ass = compose.pre(x) /\ g.post(x,y) /\ f.post(y,z)) -> compose.post(x,r)
+}
+
+=================================================================
+Here is how post-cond verification of foldr looks like.
+It looks like it should be possible to perform the necessary
+inferencing.
+
+-------
+
+foldr f b xs = f (g x)
+foldr :: \ f g b xs -> r
+    req true
+	ensure foldr.post(xs,b,r)
+f:: \ x r -> r2: 
+     req true
+     ens f.post(x,r,r2);
+{ // true
+  case xs of
+    [] -> // xs=[]
+	      b 
+		  // rel_ass : xs=[] /\ b=r -> foldr.post(xs,b,r)
+    x:ys -> 
+	      // xs=x:ys 
+		  r' = (foldr f b ys)
+		  // xs=x:ys /\ fold.post(ys,b,r')
+	      r = f x r'
+		  // xs=x:ys /\ foldr.post(ys,b,r') /\ f.post(x,r',r)
+		  // rel_ass : xs=x:ys /\ foldr.post(ys,b,r') /\ f.post(x,r',r) 
+		  //       -> foldr.post(xs,b,r)
+ }
+ 
+ 
+ let f y = \ x. g x y
+ 
+ 
+ twice f x = f (f x)
+ quad = twice twice  = quad f x = f(f(f(x))))
+ k_times = quad quad  256-times
+         = ktimes f x = f(f(f...f(x))))
+		 
+// second-order
+// arbitrary
+ 
+foldr f b xs = f (g x)
+foldr :: \ f g b xs -> r
+    req foldr.pre(xs,b)
+	ensure foldr.post(xs,b,r)
+f:: \ x r -> r2: 
+     req f.pre(x)
+     ens f.post(x,r,r2);
+{ // foldr.pre(xs,b)
+  case xs of
+    [] -> // xs=[] /\ foldr.pre(xs,b)
+	      b 
+		  // rel_ass : xs=[] /\ b=r /\ foldr.pre(xs,b) -> foldr.post(xs,b,r)
+    x:ys -> 
+	      // xs=x:ys /\ foldr.pre(xs,b)
+		  // rel_ass : xs=x:ys /\ foldr.pre(ys,b) -> foldr.pre(ys,b)
+		  r' = (foldr f b ys)
+		  // xs=x:ys /\ foldr.pre(xs,b) /\ foldr.post(ys,b,r')
+		  // rel_ass : xs=x:ys /\ foldr.pre(xs,b) /\ foldr.post(ys,b,r') 
+		  //           -> f.pre(x,r')
+	      r = f x r'
+		  // xs=x:ys /\ foldr.pre(xs,b) /\ foldr.post(ys,b,r') /\ f.post(x,r',r)
+		  r
+		  // rel_ass : xs=x:ys /\ foldr.pre(xs,b) /\ foldr.post(ys,b,r')  
+		  //   /\ f.post(x,r',r) -> foldr.post(xs,b,r)
+ }
+ 
+ x.#
+ x.inv
+ x.type
+ x.imm - R,W,RW,A
+ x.variance +/-/./?
+ f.pre
+ f.post
+ f.func
+ 
+ global.flow
+ 
+ 
+ 
+ 
+ 
+ 
+ ====== current sleek system..
+ infer [x,y] ... |- ....
+ 
+   // compose.pre(x) /\ g.post(x,y) /\ f.post(y,z)
+  return z
+  // rel ass = compose.pre(x) /\ g.post(x,y) /\ f.post(y,z)) -> compose.post(x,r)
+}
+
+infer [f.post,g.post,compose.post] 
+    compose.pre(x) /\ g.post(x,y) /\ f.post(y,z) |- compose.post(x,r).
+		
+	=============================================
+
+Concrete versus Symbolic pre/post
+
+// First-order program has concrete pre/post. 
+// An example isthe increment method below
+  inc :: n::Int -> res:Int
+    req n>=0
+	ens res=n+1
+  = {
+      n+1
+	}
+	
+// Higher-order program instead have symbolic pre-post
+// that are guarded by refinement constraints. The 
+// main characteristic of symbolic pre/post is that they
+// can be instantiated by the actual function-type parameters passed.
+
+// Each function type parameter would also have symbolic pre-post.
+// The parameter f of twice would be written as follows
+
+   f:: x:a -> r:a
+   req f.pre(x)
+   ens f.post(x,r)
+
+The twice method itself would have symbolic pre-post, as shown next.
+ twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+  = {
+	 // twice.pre(f,x)
+	 // rel_ass : twice.pre(f,x) -> f.pre(x)
+	 let y = f x in
+	 // twice.pre(f,x) /\ f.post(x,y)
+	 // rel_ass : twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+	 let r = f y 
+	 // twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,res)
+	 // rel_ass : twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) /\ res=r
+     //     -> twice.post(f,x,res)
+	}
+	
+twice.pre(f,x)      = f.pre(x) /\ (f.post(x,y) -> f.pre(y))
+twice.post(f,x,res) = f.post(x,y) /\ f.post(y,r) 
+	
+Consider a call to twice:
+  (twice inc x)
+How should we symbolically compute its pre/post. To do so,
+we would need to instantiate our symbolic pre-post of twice, as follows:
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+Based on f=inc, we could derive the following relational assumptions.
+     twice.pre(inc,x) -> x>=0   // twice.pre(inc,x) = x>=0
+	 
+  /\ twice.pre(inc,x) /\ y=x+1 -> y>=0 //  (? /\ x>=0) /\ y=x+1 -> y>=0
+  
+  /\ twice.pre(inc,x) /\ y=x+1 /\ r=y+1 -> twice.post(inc,x,r)
+
+
+   ? /\ A -> B
+// ? = not(A) \/ B
+
+infer [x]  y=x+1 -> y>=0 |- y>=0
+
+From above, we can derive:
+   twice.pre(inc,x) -> x>=0
+  /\ ex y. (x>=0  /\ y=x+1 /\ r=y+1) -> twice.post(inc,x,r)
+
+Hence:
+  twice.pre(inc,x)    = x>=0 // weakest
+  twice.post(inc,x,r) = ex y. x>=0 /\ y=x+1 /\ r=y+1 // strongest
+                      = x>=0 /\ r=x+2
+   
+Assume, we have a slightly different spec that works for
+input less than 100. That is
+  
+  inc2: req n<100
+        ens res=n+1;
+
+infer [x]  y=x+1 -> y>=0 |- y>=0
+
+infer [x]  y=x+1 /\ x<100 -> y<100
+
+Consider a call to twice:
+  (twice inc2 x)
+Base on the symbolic pre-post of twice, as follows:
+     twice.pre(inc2,x) -> inc2.pre(x)
+  /\ twice.pre(inc2,x) /\ inc2.post(x,y) -> inc2.pre(y)
+  /\ twice.pre(inc2,x) /\ inc2.post(x,y) /\ inc2.post(y,r) -> twice.post(inc2,x,res)
+Based on f=inc, we could derive the following relational assumptions.
+     twice.pre(inc2,x) -> x<100
+  /\ twice.pre(inc2,x) /\ y=x+1 -> y<100
+  /\ twice.pre(inc2,x) /\ y=x+1 /\ r=y+1 -> twice.post(inc,x,r)
+I would expect this to simplify to:
+  twice.pre(inc2,x)    = x<99 // weakest
+  twice.post(inc2,x,r) = ex y. x<99 /\ y=x+1 /\ r=y+1 // strongest
+                       = x<99 /\ r=x+2
+
+We may also define another higher-order method quad.
+ quad f x 
+	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+ {
+    // quad.pre(f,x)
+    g = twice twice f 
+	g x
+ }
+
+Here, we have:  
+  quad f x
+  = twice twice f x
+  = (twice (twice f)) x
+  = (twice f) ((twice f) x)
+  = (twice f) (f (f x))
+  = (twice f) (f (f x))
+  = f(f(f(f x)))
+  
+Can we ensure in the end to get the following relational assumption?
+     quad.pre(f,x) -> f.pre(x)
+  /\ quad.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y2) -> f.pre(y2)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y2) /\ f.post(y2,y3) -> f.pre(y3)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y2) 
+       /\ f.post(y2,y3) /\ f.post(y3,res) -> quad.post(f,x,res)
+
+Can this be done by symbolic evaluation of the pre/post?
+
+
+apply_f_times n f x =
+   if n==0 then x
+   else apply_f_times (n-1) f (f x)
+   
+   
+    (apply_f_times n inc x)
+   
+   
+ ====================================
+  
+  // higher-order spec
+  // higher-order lang
+  iast.ml --> cast.ml
+    ^
+	|
+  cil.ml
+  
+  bind e to p(v1,v2,v4) in e2
+  
+  slefNode(left,right)
+  
+ quad = twice twice
+ foo1 = twice quad  //2^4  (16)
+ foo2 = quad twice  //+16  (4^2)
+ foo3 = quad quad   //+256  (4^4)
+  
+==================================================
+ twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+
+
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// execution
+{ 
+  twice (twice) f x
+  = (twice) (twice f) x
+  = (twice f) (twice f x)
+  = f (f (twice f x))
+  = f (f (f (f x)))
+}
+
+once f x = f x
+foo = once once
+foo2 = once twice
+foo3 = twice once
+=====================================================================
+
+  f(f(f(f(x))))
+  
+  (a<pref> -> b<postf>) <: c<preg> -> d<postg>
+  
+  twice(twice,..)
+  (twice.pre -> twice.post) <: (f1.pre -> f1.post)
+
+  twice(twice,..)
+  
+  
+  twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f1,x) -> f1.pre(x)
+  /\ twice.pre(f1,x) /\ f1.post(x,y) -> f1.pre(y)
+  /\ twice.pre(f1,x) /\ f1.post(x,y) /\ f1.post(y,r) -> twice.post(f1,x,res)
+
+
+Direct Implementation of Quad
+-----------------------------
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> twice.pre(twice,f)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+    twice.pre(f1,x) -> f1.pre(x)
+  /\ twice.pre(f1,x) /\ f1.post(x,y) -> f1.pre(y)
+  /\ twice.pre(f1,x) /\ f1.post(x,y) /\ f1.post(y,r) -> twice.post(f1,x,res)
+
+{ 
+  // quad.pre(f,x)
+  // rel ass: quad.pre(f,x) -> twice.pre(twice,f)
+  g = twice twice f;
+  // quad.pre(f,x) /\ twice.post(twice,f,g) 
+  // rel ass : quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+  g x
+  // quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)
+  // rel ass: quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res) 
+  //    -> quad.post(f,x,res)
+}
+
+Implementation of Quad via Intermediate
+---------------------------------------
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> foo.pre(f)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+	 rel ass : foo.pre(f) -> twice.pre(twice,f)
+	   /\ foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+
+
+
+{ 
+  // quad.pre(f,x)
+  // rel ass: quad.pre(f,x) -> foo.pre(f)
+  g = foo f;
+  // quad.pre(f,x) /\ foo.post(f,g) 
+  // rel ass : quad.pre(f,x) /\ foo.post(f,g) --> g.pre(x)
+  g x
+  // quad.pre(f,x) /\ foo.post(f,g) /\ g.post(x,res)
+  // rel ass: quad.pre(f,x) /\ foo.post(f,g) /\ g.post(x,res) 
+  //    -> quad.post(f,x,res)
+}
+  
+  ===================================
+  // rel ass : quad.pre(f,x) -> twice.pre(twice,f)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+//
+// rel ass : quad.pre(f,x) -> foo.pre(f)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+	 rel ass : foo.pre(f) -> twice.pre(twice,f)
+	   /\ foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+=========================================
+foo f = 
+ 	 req foo.pre(f)
+	 ens foo.post(f,res)	
+	 rel ass : foo.pre(f) -> twice.pre(twice,f)
+	   /\ foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+{ 
+    // foo.pre(f)
+	// foo.pre(f) -> twice.pre(twice,f)
+    r = twice twice f
+	// foo.pre(f) /\ twice.post(twice,f,r)
+	return r
+    // foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+}
+
+Comparison between two implementaions
+-------------------------------------
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> twice.pre(twice,f)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+
+
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> foo.pre(f)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ foo.post(f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+foo f = 
+ 	 req foo.pre(f)
+	 ens foo.post(f,res)	
+	 rel ass : foo.pre(f) -> twice.pre(twice,f)
+	   /\ foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+
+
+Correlation
+===========
+foo.pre(f) -> twice.pre(twice,f)
+foo.pre(f) /\ twice.post(twice,f,res) -> foo.post(f,res)
+
+Could we say
+============
+foo.pre(f)      = twice.pre(twice,f)
+foo.post(f,res) = twice.post(twice,f,res)
+
+Given
+=====
+ twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+
+
+ we expand?
+-------------
+twice.pre(twice,f)
+
+     twice.pre(twice,f) -> twice.pre(f)
+  /\ twice.pre(twice,f) /\ twice.post(f,y) -> twice.pre(y)
+  /\ twice.pre(twice,f) /\ twice.post(f,y) /\ twice.post(y,r) 
+             -> twice.post(twice,f,res)
+
+
+Can we expand?
+-------------
+twice.post(twice,f)
+
+=========================================================
+Below is an expanded form of quad..
+
+ quad f x 
+	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+     quad.pre(f,x) -> f.pre(x)
+  /\ quad.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y1) -> f.pre(y1)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y1) /\ f.post(y1,y2) -> f.pre(y2)
+  /\ quad.pre(f,x) /\ f.post(x,y) /\ f.post(y,y1) /\ f.post(y1,y2) 
+     /\ f.post(y2,res) -> quad.post(f,x,res)
+
+id x =
+  req true
+  ens res =x
+{
+  return x
+}
+
+foo = 
+  req foo.pre
+  ens res=id
+{
+  t = id id
+  id
+}
+
+
+apply f x 
+  req apply.pre(f,x)
+  ens apply.post(f,x,res)
+  rel ass : apply.pre(f,x) -> f.pre(x)
+         /\ apply.pre(f,x) /\ f.post(x,y) & res=y --> apply.post(f,x,res)
+{
+   // apply.pre(f,x) 
+   // rel ass : apply.pre(f,x) -> f.pre(x)
+   y = f x
+   // apply.pre(f,x) /\ f.post(x,y)
+   y
+   // apply.pre(f,x) /\ f.post(x,y) & res=y
+   // apply.pre(f,x) /\ f.post(x,y) & res=y --> apply.post(f,x,res)
+
+}
+
+=================================================
+Assume:
+
+ twice f x 
+	 req twice.pre(f,x)
+	 ens twice.post(f,x,res)	
+ with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+
+
+   
+{twice.pre(inc,x)} r = twice inc x {twice.post(inc,x,r)}
+
+// to check or accumulate?
+     twice.pre(inc,x) -> inc.pre(x)
+  /\ twice.pre(inc,x) /\ inc.post(x,y) -> inc.pre(y)
+  /\ twice.pre(inc,x) /\ inc.post(x,y) /\ inc.post(y,r) 
+      -> twice.post(inc,x,res)
+
+===================================================================================
+
+apply f x 
+   req apply.pre(f,x)
+       /\  (apply.pre(f,x) -> f.pre(x))
+       /\  (apply.pre(f,x) /\ f.post(x,res) ->  apply.post(f,x,res))
+   ens apply.post(f,x,res)
+   
+   apply.pre(f,x)      = f.pre(x)
+   apply.post(f,x,res) = f.post(x,res)
+                       = res = f(x)    // more precise
+
+   ens apply.post(f,x,res) //  res = f(x)
+
+= {
+   // apply.pre(f,x) 
+   //    /\ (apply.pre(f,x) -> f.pre(x))
+   // pre check : apply.pre(f,x) |- f.pre(x)
+   // apply.pre(f,x) 
+   //    /\ (apply.pre(f,x) -> f.pre(x)) |- f.pre(x)
+   r = f x
+   // apply.pre(f,x) /\ f.post(x,r)  
+   //     /\ apply.pre(f,x) /\ f.post(x,res) ->  apply.post(f,x,res)
+   1
+   // apply.pre(f,x) /\ f.post(x,r) & res=r 
+   // /\ (apply.pre(f,x) /\ f.post(x,r) ->  apply.post(f,x,r)) |-  apply.post(f,x,res)
+}
+
+checkentail apply.pre(f,x) /\ (apply.pre(f,x) -> f.pre(x)) |- f.pre(x).
+checkentail apply.pre(f,x) /\ f.post(x,r) & res=r
+     /\ (apply.pre(f,x) /\ f.post(x,r) ->  apply.post(f,x,r)) |- apply.post(f,x,res).
+	 
+//  current state |- f.pre(x)
+      apply f x
+//  current state /\ f.post(x,res)
+
+   apply f x 
+   req apply.pre(f,x)
+       /\ apply.pre(f,x) -> f.pre(x)
+	   /\ apply.pre(f,x) /\ f.post(x,res) ->  apply.post(f,x,res)
+   ens apply.post(f,x,res)
+ 
+   weakest pre:  apply.pre(f,x)      = f.pre(x)
+   strong post:  apply.post(f,x,res) = f.post(x,res) 
+                                     = res = f x
+									 
+									f.post(....,res)
+									
+									res=f(...)
+									
+		impf.pre(x)      = x->n
+        impf.post(x,res) =	x->n+1 /\ res=1
+		
+		apply(impf,x)
+		pre  :: x->n
+		post :: x->n+1 /\ res=1
+		
+		post :: res=f x
+		
+		
+		
+		
+
+  apply f x 
+   req apply.pre(f,x)
+       /\ apply.pre(f,x) -> f.pre(x)
+	   /\ apply.pre(f,x) /\ f.post(x,res) ->  apply.post(f,x,res)
+   ens apply.post(f,x,res)
+   
+   Do we really need to write apply.pre(f,x) and apply.post(f,x,res)?
+   
+==============================================================================
+
+ twice f x 
+	 req twice.pre(f,x)
+	  with relational assumption constraints
+     twice.pre(f,x) -> f.pre(x)
+  /\ twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+  /\ twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)
+	 ens twice.post(f,x,res)	
+  = {
+	 // twice.pre(f,x)
+	 // rel_ass : twice.pre(f,x) -> f.pre(x)
+	 let y = f x in
+	 // twice.pre(f,x) /\ f.post(x,y)
+	 // rel_ass : twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)
+	 let r = f y 
+	 // twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,res)
+	 // rel_ass : twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) /\ res=r
+     //     -> twice.post(f,x,res)
+	}
+
+From above, we can derive:
+ twice.pre(f,x)      = f.pre(x) /\ (f.post(x,y) -> f.pre(y))
+ twice.post(f,x,res) = f.post(x,y) /\ f.post(y,r) 
+                     = res = f(f x))
+ 
+Sleek Proofs to check out
+-------------------------
+checkentail twice.pre(f,x) /\ (twice.pre(f,x) -> f.pre(x)) |- f.pre(x).
+checkentail twice.pre(f,x) /\ f.post(x,y) /\
+     (twice.pre(f,x) /\ f.post(x,y) -> f.pre(y)) |- f.pre(y).
+checkentail twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) & r=res |-
+     (twice.pre(f,x) /\ f.post(x,y) /\ f.post(y,r) -> twice.post(f,x,res)) |- f.post(x,res).
+
+================================
+
+Quad Method
+===========
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> twice.pre(twice,f)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+
+
+Sleek Proofs to check out
+-------------------------
+checkentail quad.pre(f,x) /\ (quad.pre(f,x) -> twice.pre(twice,f)) |- twice.pre(twice,f).
+checkentail quad.pre(f,x) /\ twice.post(twice,f,g) /\
+     (quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)) |- g.pre(x).
+checkentail quad.pre(f,x) /\ f.post(x,y) /\
+     (quad.pre(f,x) /\ f.post(x,y) -> f.pre(y)) |- f.pre(x).
+checkentail quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res) /\
+     (quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res) -> quad.post(f,x,res)) 
+	 |- quad.post(f,x,res).
+	 
+Quad Method (inlined?)
+===========
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> twice.pre(twice,f)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
+{
+   g = twice twice f
+   r = g x
+   r
+}
+  twice.post(f,x,res) = res=f(f(x))
+  
+  quad.pre(f,x) =  twice.pre(twice,f)
+                   /\ twice.post(twice,f,g) --> g.pre(x)
+  quad.post(f,x,res) 
+                = twice.post(twice,f,g) /\ g.post(x,res)
+				= g = twice(twice(f))) /\ g.post(x,res)
+
+ twice.pre(f,x)      = f.pre(x) /\ (f.post(x,y) -> f.pre(y))
+ twice.post(f,x,res) = f.post(x,y) /\ f.post(y,res) 
+
+ twice.pre(f,x)      = f.pre(x) /\ (f.post(x,y) -> f.pre(y))
+ twice.post(f,x,res) = res=f(f(x)) 
+ 
+ gg f =
+   req gg.pre(f)
+   ens gg.post(f,res)
+ {
+   g = twice twice f1
+   return g
+ }
+   
+
+// rel ass 1: 
+     quad.pre(f,x) -> twice.pre(twice,f)
+     <-> quad.pre(f,x) -> twice.pre(f) /\ (twice.post(f,y) -> twice.pre(y))
+     <-> quad.pre(f,x) -> twice.pre(f) /\ (quad.pre(f,x) /\ twice.post(f,y) -> twice.pre(y))
+	 
+// rel ass 2: 
+     quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+     <-> quad.pre(f,x) /\ (twice.post(f,y) /\ twice.post(y,g)) --> g.pre(x)
+     <-> quad.pre(f,x) /\ (twice.post(f,y) /\ twice.post(y,g)) --> g.pre(x)
+
+// rel ass 3: 
+     quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)  -> quad.post(f,x,res)
+     <-> quad.pre(f,x) /\ (twice.post(f,y) /\ twice.post(y1,g) /\ g.post(x,res)  
+	                                                          -> quad.post(f,x,res))
+quad f x = 
+ 	 req quad.pre(f,x)
+	 ens quad.post(f,x,res)	
+// rel ass : quad.pre(f,x) -> f.pre(x)
+//     /\ quad.pre(f,x) /\ f.post(x,y1) -> f.pre(y1)  
+//     /\ quad.pre(f,x) /\ f.post(x,y1) /\ f.post(y1,y2) -> f.pre(y2)  
+//     /\ quad.pre(f,x) /\ f.post(x,y1) /\ f.post(y1,y2) /\ f.post(y2,y3) -> f.pre(y3)  
+//     /\ quad.pre(f,x) /\ f.post(x,y1) /\ f.post(y1,y2) /\ f.post(y2,y3) 
+                     /\f.post(y3,res)-> f.post(x,res)  		
+
+f.post^i(x,y)	
+				 
+{ 
+  g = twice twice f
+  g x
+}
+
+  quad.pre(f,x) /\ twice.post(twice,f,g) --> g.pre(x)
+//     /\ quad.pre(f,x) /\ twice.post(twice,f,g) /\ g.post(x,res)     
+//              -> quad.post(f,x,res)
