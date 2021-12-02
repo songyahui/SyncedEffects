@@ -1,4 +1,6 @@
+Add LoadPath "~yahuis/Desktop/git/SyncedEffects/coq" as C.
 Load util.
+
 
 
 Fixpoint forward (env:envenvironment) (s:states) (expr:expression) : states :=
@@ -160,6 +162,14 @@ Definition testTry1 : expression :=
 Compute (forward_Shell testTry1). (* "{A,B}.{C}.{D} with exit code (0)   " *)
 
 
+Definition testPresent0 : expression :=
+  present "A" then nothing else (emit "A").
+
+Compute (forward_Shell testPresent0). (* "{A,B}.{C}.{D} with exit code (0)   _|_ with exit code (0)    " *)
+
+Definition testPresent00 : expression :=
+  present "A" then (emit "A") else nothing.
+Compute (forward_Shell testPresent00).
 
 Definition testPresent : expression :=
   present "A" then testSeq else (emit "A").
