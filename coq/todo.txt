@@ -3,6 +3,59 @@
 4. small step semantics. 
 5. quad big step spec. 
 
+
+
+
+state
+  get    :: req cnt<n>
+            ens cnt<n> & res=n;  
+  put(s) :: req cnt<_>
+            ens cnt<s> & res=(); 
+			
+  get/put...  [cnt<n>;cnt<n+1>;cnt<n+2>...]
+  
+  inc    :: req cnt<n>
+            ens cnt<n+1>;  
+  reset  :: req cnt<n>
+            ens cnt<0>;
+  
+exceptions
+Maybe
+non-determinism
+parsing
+state
+
+ twice :: m a -> m (a,a)
+ twice m = do
+             a <- m
+			 b <- m
+			 return (a,b)
+			 
+ diff betwen Koka + OCaml effects
+      effects vs monads
+
+  what to model + verify
+   - exceptions (flow)
+   - states (separation logic)
+   - non-determinism (res=1|2|3  disjunction/sets)
+      foo = 1 or 2
+	  ensures res={1,2}
+	  ensures res=1 \/ res=2
+	 [...]
+	 do
+	   v1 <-m1  [1,2,3]
+	   v2 <-m2  [2,4,5]
+	   return v1+v2  [3,...,8]
+	   
+	  
+
+		  
+   
+	  "/Users/yahuis/.opam/ocaml-base-compiler.4.10.2/bin/coqtop"
+
+			 
+			 
+
 ==========
 
 module Blank where
