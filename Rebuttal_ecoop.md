@@ -29,10 +29,7 @@ There are more minor adjustments to be done within 5 days :
 - Provide (at least informal) definitions for terms at the first-mentioned site. In particular, for TRS, partial derivatives, SyncEff.
 - Find a buddy to check the writings; 
 
-In total, we plan to finish all the changes above within 19+5=24 working days. 
-
-
-We will try
+In total, we plan to finish all the changes within 19+5=24 working days. 
 
 
 
@@ -58,12 +55,11 @@ We will try
 Among all the challenges we faced, implementing the parallel merging algorithm took us the longest. 
 The concept of linear synchronous parallelism is not so complicated. 
 However, the Kleene stars make it complex. For example 
-({A}.{B})^* || ({C}. {D}. {E})^*, we should be able to find a fixpoint, which is 
-({A,C}.{B.D}.{A, E}.{B, C}.{A, D}.{B, E})^*. 
+$(\{A\}.\{B\})^* || (\{C\}. \{D\}. \{E\})^*$, we should be able to find a fixpoint, which is 
+$(\{A,C\}.\{B, D\}.\{A, E\}.\{B, C\}.\{A, D\}.\{B, E\})^*$. 
 
 Luckily we manage to do that in our final implementation. 
 
-Another surprise is the proof for the loop invariant inference algorithm we discovered, which has not been mentioned by prior works at all!
 
 
 
@@ -88,10 +84,11 @@ Our proposed specification conveniently fuses traditional linear temporal logics
 
 ### Q4. Were there any surprises or challenges in the implementation/evaluation?
 
-We preferred to make use of existing implementations to build our front-end parser. We looked into the source code of the compiler of Hiphop.js. Unfortunately, we did not manage to get it run. Due to the time limits, we wrote the parser from scratch in Ocaml for the core language. 
+We preferred to make use of existing implementations to build our front-end. We looked into the source code of the compiler of Hiphop.js. Unfortunately, we did not manage to get it run. Due to the time limits, we wrote the parser from scratch in Ocaml for the core language. 
 
 If there are follow-up works, we will continue to investigate adding our temporal verification into existing language implementations. 
 
+Another surprise is the proof for the loop invariant inference we discovered (FV-Par rule and the proof in Appendix C), which has not been mentioned by prior works at all!
 
 
 ### Q5. Why not some evaluation statistics?
@@ -166,8 +163,8 @@ We find this is an intelligent design as in:
 
 Given a program p, for a small step evaluation to p':
 
-- k = 0, means there is no exceptions.
-- k = 1, which means there are no exceptions, but a pause (L348).
+- k = 0, means there are no exceptions.
+- k = 1, means there are no exceptions, but a pause (L348).
 - k = 2, there is an exception, which escapes the nearest try-catch. 
 - k > 2, means there is an exception, which escapes a further nesting try-catch. 
 
@@ -197,7 +194,7 @@ We meant that our algorithm is proven sound.
 
 ### Q4. what about $\lambda^{a/s}$ ?
 
-$\lambda^{a/s}$  sounds goos!
+$\lambda^{a/s}$  sounds good! Thanks for the suggestion.
 
 
 ---
