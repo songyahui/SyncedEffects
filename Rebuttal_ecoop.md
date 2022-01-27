@@ -11,14 +11,28 @@ We took all the valuable comments into account and made the following change lis
 # CHANGE LIST: 
 
 
-Here is a list of the changes that we plan to make in
-response to the reviews and the timeline for those changes.
+| | Changes     | Description | Timeline (Working days)    |
+| ---  | ----------- | ----------- | ----------- |
+|1 | Typos       | Mentioned in the reviews  | Already Done| 
+|2 | Algorithm 1 | Replace it using inference rules  | 3-5 days    |
+|3 | Introduction| Less technical with more details | 1-3 days | 
+|4 | Section 2   |  Reduce explanations for Esterel, add more for Hiphop.js, to be more self-contained    |1-3 days | 
+|5 | Section 3  | Emphasis the challenges we are facing |1-3 days | 
+|6 | Case study | Emphasis the expressiveness by adding useful property examples  | 1-2 days (Partly done in Q2 to Reviewer A) |
+|7 | Evaluation data | Have a table detailing summary statistics | 3 days |
+|  | In total  | | 10 - 19 days
 
-| Changes     | Description | Timeline    |
-| ----------- | ----------- | ----------- |
-| Typos       | Thanks They are helpful and much appricated!  | Already Done| 
-| Paragraph   |             | Text        |
+There are more minor adjustments to be done within 5 days :
 
+- Drop the organization paragraph; 
+- Reduce the unnecessary footnotes; 
+- Provide (at least informal) definitions for terms at the first-mentioned site. In particular, for TRS, partial derivatives, SyncEff.
+- Find a buddy to check the writings; 
+
+In total, we plan to finish all the changes above within 19+5=24 working days. 
+
+
+We will try
 
 
 
@@ -80,6 +94,16 @@ If there are follow-up works, we will continue to investigate adding our tempora
 
 
 
+### Q5. Why not some evaluation statistics?
+
+We spent some time building a reactive demo page. 
+Users can choose test cases and run the verification on our server. 
+There are verification time and proving details; one example can be found in the response Q2 to Reviewer B.
+
+We did not cite the demo page to be anonymous. We will consider making a summary table to present some of them on the paper for further resubmissions. 
+Thanks for the suggestion. 
+
+
 
 
 
@@ -96,7 +120,7 @@ We chose the program by needs of validating our novel ideas and challenging impl
 
 Therefore, we chose test cases related to each of the above constructs, and we produced some other test cases involving combinations of the above constructs. 
 
-We annotate the specifications by hand, based on the behaviors defined by the Esterel Compilers. 
+We annotate the specifications by hand, based on the behaviors defined by the Esterel Compilers and Esterel semantics documentations. 
 
 
 ### Q2. How are the LHS/RHS from Fig. 9 provided? Are they deduced automatically from the program or do they need to be encoded by the developer?
@@ -135,6 +159,53 @@ One example input and its corresponding TRS output:
 ```
 
 
+### Q3. why d+2 instead of 2, if any code >2 is considered as an error?
+
+The completion code k originated from prior works defining semantics for Esterel. 
+We find this is an intelligent design as in:
+
+Given a program p, for a small step evaluation to p':
+
+- k = 0, means there is no exceptions.
+- k = 1, which means there are no exceptions, but a pause (L348).
+- k = 2, there is an exception, which escapes the nearest try-catch. 
+- k > 2, means there is an exception, which escapes a further nesting try-catch. 
+
+Therefore, if we write "raise 0" to escape the nearest try-catch, the completion code should be k = 0+2. 
 
 
 
+
+
+
+
+## To Reviewer C
+
+### Q1. What about something like "Temporal Verification of Synchronous and Asynchronous Concurrency."
+
+That looks good! Thanks for the suggestion. 
+
+### Q2. what is a back-end TRS?
+
+TRS means the term rewriting system we developed. It is used as a back-end solver for our verification. 
+
+### Q3. l66 soundly check can you unsoundly check?
+
+If the algorithm is unsound, it will validate an invalid inclusion input. 
+We meant that our algorithm is proven sound. 
+
+
+### Q4. what about $\lambda^{a/s}$ ?
+
+$\lambda^{a/s}$  sounds goos!
+
+
+---
+
+
+Thank you so much for all the constructive suggestions. 
+
+
+Best, 
+
+Authors from Submission #53
